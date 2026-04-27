@@ -12,6 +12,7 @@ import {
   Upload,
   Download,
   BarChart3,
+  Shield,
   LogOut,
   User,
   Menu,
@@ -80,6 +81,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Relatorios",
     icon: <BarChart3 className="h-5 w-5" />,
     roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS", "VISUALIZADOR"],
+  },
+  {
+    href: "/audit",
+    label: "Audit Log",
+    icon: <Shield className="h-5 w-5" />,
+    roles: ["SUPERADMIN", "COORD_MUNICIPAL"],
   },
 ];
 
