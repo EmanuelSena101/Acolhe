@@ -79,19 +79,21 @@ export const moradorRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const morador = await db.morador.create({
-        data: {
-          ...input,
-          condicoes: input.condicoes,
-        },
-      });
+      return db.$transaction(async (tx) => {
+        const morador = await tx.morador.create({
+          data: {
+            ...input,
+            condicoes: input.condicoes,
+          },
+        });
 
-      await db.domicilio.update({
-        where: { id: input.domicilioId },
-        data: { nMoradores: { increment: 1 } },
-      });
+        await tx.domicilio.update({
+          where: { id: input.domicilioId },
+          data: { nMoradores: { increment: 1 } },
+        });
 
-      return morador;
+        return morador;
+      });
     }),
 
   update: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS", "ACS"])
@@ -115,18 +117,20 @@ export const moradorRouter = createTRPCRouter({
   delete: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL"])
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const morador = await db.morador.findUniqueOrThrow({
-        where: { id: input.id },
-        select: { domicilioId: true },
+      return db.$transaction(async (tx) => {
+        const morador = await tx.morador.findUniqueOrThrow({
+          where: { id: input.id },
+          select: { domicilioId: true },
+        });
+
+        await tx.morador.delete({ where: { id: input.id } });
+
+        await tx.domicilio.update({
+          where: { id: morador.domicilioId },
+          data: { nMoradores: { decrement: 1 } },
+        });
+
+        return { success: true };
       });
-
-      await db.morador.delete({ where: { id: input.id } });
-
-      await db.domicilio.update({
-        where: { id: morador.domicilioId },
-        data: { nMoradores: { decrement: 1 } },
-      });
-
-      return { success: true };
     }),
 });

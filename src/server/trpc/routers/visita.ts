@@ -93,16 +93,18 @@ export const visitaRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const visita = await db.visita.create({ data: input });
+      return db.$transaction(async (tx) => {
+        const visita = await tx.visita.create({ data: input });
 
-      if (input.status === "REALIZADA" && input.dataRealizada) {
-        await db.domicilio.update({
-          where: { id: input.domicilioId },
-          data: { ultimaVisita: input.dataRealizada },
-        });
-      }
+        if (input.status === "REALIZADA" && input.dataRealizada) {
+          await tx.domicilio.update({
+            where: { id: input.domicilioId },
+            data: { ultimaVisita: input.dataRealizada },
+          });
+        }
 
-      return visita;
+        return visita;
+      });
     }),
 
   atualizar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS", "ACS"])
@@ -117,19 +119,21 @@ export const visitaRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input: { id, ...data } }) => {
-      const visita = await db.visita.update({
-        where: { id },
-        data,
-      });
-
-      if (data.status === "REALIZADA" && data.dataRealizada) {
-        await db.domicilio.update({
-          where: { id: visita.domicilioId },
-          data: { ultimaVisita: data.dataRealizada },
+      return db.$transaction(async (tx) => {
+        const visita = await tx.visita.update({
+          where: { id },
+          data,
         });
-      }
 
-      return visita;
+        if (data.status === "REALIZADA" && data.dataRealizada) {
+          await tx.domicilio.update({
+            where: { id: visita.domicilioId },
+            data: { ultimaVisita: data.dataRealizada },
+          });
+        }
+
+        return visita;
+      });
     }),
 
   cancelar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
