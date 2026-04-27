@@ -30,8 +30,8 @@ export default function DashboardPage() {
   );
 
   const { data: atrasadas } = trpc.relatorios.visitasAtrasadas.useQuery(
-    { ubsId: selectedUbsId === "all" ? (ubsList?.[0]?.id ?? "") : selectedUbsId },
-    { enabled: !!ubsList && ubsList.length > 0 },
+    selectedUbsId === "all" ? { prefeituraId: prefeituraId! } : { ubsId: selectedUbsId },
+    { enabled: !!prefeituraId && !!ubsList && ubsList.length > 0 },
   );
 
   const { data: imports } = trpc.importacao.listarMeus.useQuery({ limit: 5 });
