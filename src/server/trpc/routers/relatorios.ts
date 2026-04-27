@@ -110,27 +110,32 @@ export const relatoriosRouter = createTRPCRouter({
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
 
-      const atrasadas = await db.visita.findMany({
-        where: {
-          status: "PENDENTE",
-          dataPrevista: { lt: hoje },
-          acs: { equipe: { ubsId: input.ubsId } },
-        },
-        include: {
-          acs: { select: { usuario: { select: { nome: true } } } },
-          domicilio: {
-            select: {
-              logradouro: true,
-              numero: true,
-              microarea: { select: { codigo: true } },
+      const whereAtrasadas = {
+        status: "PENDENTE" as const,
+        dataPrevista: { lt: hoje },
+        acs: { equipe: { ubsId: input.ubsId } },
+      };
+
+      const [total, atrasadas] = await Promise.all([
+        db.visita.count({ where: whereAtrasadas }),
+        db.visita.findMany({
+          where: whereAtrasadas,
+          include: {
+            acs: { select: { usuario: { select: { nome: true } } } },
+            domicilio: {
+              select: {
+                logradouro: true,
+                numero: true,
+                microarea: { select: { codigo: true } },
+              },
             },
           },
-        },
-        orderBy: { dataPrevista: "asc" },
-        take: 100,
-      });
+          orderBy: { dataPrevista: "asc" },
+          take: 100,
+        }),
+      ]);
 
-      return { total: atrasadas.length, visitas: atrasadas };
+      return { total, visitas: atrasadas };
     }),
 
   kpis: protectedProcedure

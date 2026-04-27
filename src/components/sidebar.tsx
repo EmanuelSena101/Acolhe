@@ -40,6 +40,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
   },
   {
+    href: "/territorio/microareas",
+    label: "Microareas",
+    icon: <Map className="h-5 w-5" />,
+    roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
+  },
+  {
     href: "/domicilios",
     label: "Domicilios",
     icon: <Home className="h-5 w-5" />,
@@ -61,13 +67,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/importacao",
     label: "Importacao",
     icon: <Upload className="h-5 w-5" />,
-    roles: ["SUPERADMIN", "COORD_MUNICIPAL"],
+    roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
   },
   {
     href: "/exportacao",
     label: "Exportacao",
     icon: <Download className="h-5 w-5" />,
-    roles: ["SUPERADMIN", "COORD_MUNICIPAL"],
+    roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
   },
   {
     href: "/relatorios",
