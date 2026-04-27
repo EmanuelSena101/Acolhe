@@ -54,6 +54,30 @@ npm run dev
 | `npm run db:migrate` | Rodar migrations Prisma         |
 | `npm run seed`       | Popular banco com dados de demo |
 
+## Deploy (Railway)
+
+1. Criar projeto no [Railway](https://railway.app)
+2. Adicionar serviço PostgreSQL + Redis
+3. Configurar variaveis de ambiente (veja `.env.example`)
+4. Conectar repositorio GitHub — Railway detecta o `railway.toml` automaticamente
+5. Deploy roda: `prisma migrate deploy` + `node server.js`
+
+Variáveis obrigatórias no Railway:
+
+- `DATABASE_URL` (gerado pelo serviço PostgreSQL)
+- `REDIS_URL` (gerado pelo serviço Redis)
+- `NEXTAUTH_URL` (URL pública do deploy)
+- `NEXTAUTH_SECRET` (gerar com `openssl rand -base64 32`)
+
+## CI/CD
+
+GitHub Actions roda em PRs e pushes para `main` e `init-branch`:
+
+- Lint (ESLint)
+- Typecheck (TypeScript)
+- Unit Tests (Vitest) — 104+ testes
+- Build (Next.js)
+
 ## Documentacao
 
 - [Arquitetura](docs/ARCHITECTURE.md)
