@@ -79,3 +79,19 @@ graph TB
 | Exportacao | Export e-SUS APS (CSV, XML, ZIP)            |
 | Dashboard  | Painel de gestao com mapa e KPIs            |
 | Relatorios | Cobertura, produtividade, visitas atrasadas |
+| Audit      | Log de auditoria (quem, o que, quando)      |
+
+## Seguranca
+
+- **RBAC**: 5 papeis (SUPERADMIN, COORD_MUNICIPAL, GERENTE_UBS, ACS, VISUALIZADOR)
+- **Multi-tenant**: Todas as queries escopadas por `prefeituraId`
+- **Path traversal**: Upload IDs validados como UUID, path check com separador
+- **CSV injection**: Valores escapados com aspas duplas
+- **Audit log**: Registro de acoes criticas para compliance
+
+## Testes
+
+| Tipo     | Ferramenta | Cobertura                                                              |
+| -------- | ---------- | ---------------------------------------------------------------------- |
+| Unitario | Vitest     | Validators (CNS, CEP, CNES, INE), CSV parser, XML parser — 104+ testes |
+| E2E      | Playwright | Auth, dashboard, navegacao, importacao                                 |

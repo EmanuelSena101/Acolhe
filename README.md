@@ -84,6 +84,7 @@ GitHub Actions roda em PRs e pushes para `main` e `init-branch`:
 - [Formatos e-SUS APS](docs/ESUS_FORMATS.md)
 - [Integracao gov.br](docs/GOVBR_AUTH.md)
 - [Roteiro de Demo](docs/DEMO_SCRIPT.md)
+- [TODO / Roadmap](docs/TODO.md)
 
 ## Licenca
 
