@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, init-branch]
   push:
-    branches: [main]
+    branches: [main, init-branch]
 
 env:
   SKIP_ENV_VALIDATION: "1"
