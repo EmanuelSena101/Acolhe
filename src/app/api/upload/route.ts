@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { join, basename } from "path";
 import { randomUUID } from "crypto";
+import { auth } from "@/server/auth";
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR ?? "./public/uploads";
 const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 20);
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -35,13 +41,14 @@ export async function POST(request: NextRequest) {
     const uploadDir = join(UPLOADS_DIR, uploadId);
     await mkdir(uploadDir, { recursive: true });
 
+    const safeName = basename(file.name).replace(/[/\\]/g, "_").replace(/\.\./g, "_");
     const buffer = Buffer.from(await file.arrayBuffer());
-    const filePath = join(uploadDir, file.name);
+    const filePath = join(uploadDir, safeName);
     await writeFile(filePath, buffer);
 
     return NextResponse.json({
       uploadId,
-      fileName: file.name,
+      fileName: safeName,
       size: file.size,
       path: filePath,
     });

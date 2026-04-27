@@ -2,15 +2,17 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { type NextRequest } from "next/server";
 import { appRouter } from "@/server/trpc/routers/_app";
 import { createContext } from "@/server/trpc/context";
+import { auth } from "@/server/auth";
 
-function handler(req: NextRequest) {
+async function handler(req: NextRequest) {
+  const session = await auth();
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
     createContext: () =>
       createContext({
-        session: null,
+        session,
         ip: req.headers.get("x-forwarded-for") ?? undefined,
         userAgent: req.headers.get("user-agent") ?? undefined,
       }),

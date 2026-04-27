@@ -6,11 +6,28 @@ type GeoJSON = {
   coordinates: number[] | number[][] | number[][][] | number[][][][];
 };
 
+const VALID_GEO_COLUMNS: Record<string, string[]> = {
+  Prefeitura: ["geom"],
+  UBS: ["geom"],
+  Microarea: ["geom"],
+  Domicilio: ["geom"],
+  Visita: ["geom_checkin"],
+  AgendaDia: ["rota"],
+};
+
+function validateTableColumn(table: string, column: string): void {
+  const allowed = VALID_GEO_COLUMNS[table];
+  if (!allowed || !allowed.includes(column)) {
+    throw new Error(`Combinacao tabela/coluna invalida: ${table}.${column}`);
+  }
+}
+
 export async function toGeoJSON(
   table: string,
   column: string,
   id: string,
 ): Promise<GeoJSON | null> {
+  validateTableColumn(table, column);
   const result = await db.$queryRaw<{ geojson: string }[]>(
     Prisma.sql`SELECT ST_AsGeoJSON(${Prisma.raw(`"${column}"`)}) as geojson
                FROM ${Prisma.raw(`"${table}"`)}
@@ -27,6 +44,7 @@ export async function setGeometry(
   id: string,
   geojson: GeoJSON,
 ): Promise<void> {
+  validateTableColumn(table, column);
   const json = JSON.stringify(geojson);
   await db.$executeRaw(
     Prisma.sql`UPDATE ${Prisma.raw(`"${table}"`)}

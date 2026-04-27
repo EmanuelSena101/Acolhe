@@ -1,4 +1,5 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import { type Papel } from "@prisma/client";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { type Context } from "./context";
@@ -21,7 +22,7 @@ export const createTRPCRouter = t.router;
 
 export const publicProcedure = t.procedure;
 
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+const enforceAuth = t.middleware(({ ctx, next }) => {
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -31,3 +32,18 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     },
   });
 });
+
+export const protectedProcedure = t.procedure.use(enforceAuth);
+
+export function rbacProcedure(allowedRoles: Papel[]) {
+  return t.procedure.use(enforceAuth).use(({ ctx, next }) => {
+    const papel = ctx.session.user.papel as Papel;
+    if (!allowedRoles.includes(papel)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Voce nao tem permissao para acessar este recurso.",
+      });
+    }
+    return next({ ctx });
+  });
+}

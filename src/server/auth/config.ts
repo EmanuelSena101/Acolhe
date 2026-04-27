@@ -66,6 +66,20 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
+    authorized({ auth: session, request: { nextUrl } }) {
+      const isLoggedIn = !!session?.user;
+      const isAuthPage = nextUrl.pathname.startsWith("/login");
+      const isApiRoute = nextUrl.pathname.startsWith("/api");
+
+      if (isApiRoute) return true;
+
+      if (isAuthPage) {
+        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
+        return true;
+      }
+
+      return isLoggedIn;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
