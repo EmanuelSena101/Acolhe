@@ -30,6 +30,7 @@ export default function RelatoriosPage() {
 
   const meses = Array.from({ length: 6 }, (_, i) => {
     const d = new Date();
+    d.setDate(1);
     d.setMonth(d.getMonth() - i);
     return { mes: d.getMonth() + 1, ano: d.getFullYear() };
   });
