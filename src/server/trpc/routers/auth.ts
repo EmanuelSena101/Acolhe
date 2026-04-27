@@ -5,6 +5,28 @@ import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 
 export const authRouter = createTRPCRouter({
+  getSession: protectedProcedure.query(async ({ ctx }) => {
+    const user = await db.usuario.findUnique({
+      where: { id: ctx.session.user.id },
+      select: {
+        id: true,
+        nome: true,
+        papel: true,
+        prefeituraId: true,
+        acs: { select: { id: true, equipeId: true } },
+      },
+    });
+    return {
+      user: user
+        ? {
+            ...user,
+            acsId: user.acs?.id ?? null,
+            equipeId: user.acs?.equipeId ?? null,
+          }
+        : null,
+    };
+  }),
+
   me: protectedProcedure.query(async ({ ctx }) => {
     const user = await db.usuario.findUnique({
       where: { id: ctx.session.user.id },
