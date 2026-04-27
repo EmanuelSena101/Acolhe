@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { hash } from "bcryptjs";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 
@@ -101,6 +102,12 @@ export const authRouter = createTRPCRouter({
       const where: Record<string, unknown> = {};
 
       if (ctx.session.user.papel === "COORD_MUNICIPAL") {
+        if (!ctx.session.user.prefeituraId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Coordenador sem prefeitura associada.",
+          });
+        }
         where.prefeituraId = ctx.session.user.prefeituraId;
       } else if (input.prefeituraId) {
         where.prefeituraId = input.prefeituraId;
@@ -137,11 +144,19 @@ export const authRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        ctx.session.user.papel === "COORD_MUNICIPAL" &&
-        input.prefeituraId !== ctx.session.user.prefeituraId
-      ) {
-        throw new Error("Voce so pode criar usuarios na sua prefeitura.");
+      if (ctx.session.user.papel === "COORD_MUNICIPAL") {
+        if (!ctx.session.user.prefeituraId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Coordenador sem prefeitura associada.",
+          });
+        }
+        if (input.prefeituraId !== ctx.session.user.prefeituraId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Voce so pode criar usuarios na sua prefeitura.",
+          });
+        }
       }
 
       const senhaHash = await hash(input.senha, 12);
@@ -168,11 +183,19 @@ export const authRouter = createTRPCRouter({
 
       if (!target) throw new Error("Usuario nao encontrado.");
 
-      if (
-        ctx.session.user.papel === "COORD_MUNICIPAL" &&
-        target.prefeituraId !== ctx.session.user.prefeituraId
-      ) {
-        throw new Error("Voce so pode gerenciar usuarios na sua prefeitura.");
+      if (ctx.session.user.papel === "COORD_MUNICIPAL") {
+        if (!ctx.session.user.prefeituraId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Coordenador sem prefeitura associada.",
+          });
+        }
+        if (target.prefeituraId !== ctx.session.user.prefeituraId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Voce so pode gerenciar usuarios na sua prefeitura.",
+          });
+        }
       }
 
       return db.usuario.update({
