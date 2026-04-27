@@ -26,6 +26,8 @@ export function MapView({
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const onMicroareaClickRef = useRef(onMicroareaClick);
+  onMicroareaClickRef.current = onMicroareaClick;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -118,21 +120,19 @@ export function MapView({
           },
         });
 
-        if (onMicroareaClick) {
-          map.on("click", "microareas-fill", (e) => {
-            const feature = e.features?.[0];
-            if (feature?.properties?.id) {
-              onMicroareaClick(feature.properties.id as string);
-            }
-          });
+        map.on("click", "microareas-fill", (e) => {
+          const feature = e.features?.[0];
+          if (feature?.properties?.id) {
+            onMicroareaClickRef.current?.(feature.properties.id as string);
+          }
+        });
 
-          map.on("mouseenter", "microareas-fill", () => {
-            map.getCanvas().style.cursor = "pointer";
-          });
-          map.on("mouseleave", "microareas-fill", () => {
-            map.getCanvas().style.cursor = "";
-          });
-        }
+        map.on("mouseenter", "microareas-fill", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "microareas-fill", () => {
+          map.getCanvas().style.cursor = "";
+        });
       }
     };
 
@@ -141,7 +141,7 @@ export function MapView({
     } else {
       map.on("load", handler);
     }
-  }, [microareas, onMicroareaClick]);
+  }, [microareas]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -175,16 +175,32 @@ export function MapView({
           const props = feature.properties;
           const coords = (feature.geometry as GeoJSON.Point).coordinates;
 
+          const container = document.createElement("div");
+          container.className = "text-sm";
+
+          const pAddr = document.createElement("p");
+          pAddr.className = "font-semibold";
+          pAddr.textContent = `${String(props.logradouro ?? "")}, ${String(props.numero ?? "")}`;
+          container.appendChild(pAddr);
+
+          const pBairro = document.createElement("p");
+          pBairro.className = "text-gray-600";
+          pBairro.textContent = String(props.bairro ?? "");
+          container.appendChild(pBairro);
+
+          const pMoradores = document.createElement("p");
+          pMoradores.className = "text-gray-500";
+          pMoradores.textContent = `${String(props.moradores ?? 0)} moradores`;
+          container.appendChild(pMoradores);
+
+          const pVisita = document.createElement("p");
+          pVisita.className = "text-gray-500";
+          pVisita.textContent = `Ultima visita: ${String(props.ultimaVisita ?? "Nunca")}`;
+          container.appendChild(pVisita);
+
           new maplibregl.Popup({ offset: 10 })
             .setLngLat(coords as [number, number])
-            .setHTML(
-              `<div class="text-sm">
-                <p class="font-semibold">${props.logradouro ?? ""}, ${props.numero ?? ""}</p>
-                <p class="text-gray-600">${props.bairro ?? ""}</p>
-                <p class="text-gray-500">${props.moradores ?? 0} moradores</p>
-                <p class="text-gray-500">Última visita: ${props.ultimaVisita ?? "Nunca"}</p>
-              </div>`,
-            )
+            .setDOMContent(container)
             .addTo(map);
         });
 

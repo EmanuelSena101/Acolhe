@@ -188,6 +188,8 @@ model Visita {
   motivoRecusa  String?
   observacoes   String?
   duracaoMin    Int?
+  latCheckin    Float?
+  lngCheckin    Float?
   externalId    String?
   criadoEm      DateTime     @default(now())
 

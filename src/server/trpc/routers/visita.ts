@@ -136,6 +136,38 @@ export const visitaRouter = createTRPCRouter({
       });
     }),
 
+  checkin: rbacProcedure(["ACS"])
+    .input(
+      z.object({
+        id: z.string(),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        observacoes: z.string().max(2000).optional(),
+        duracaoMin: z.number().int().min(1).max(480).optional(),
+      }),
+    )
+    .mutation(async ({ input: { id, lat, lng, ...data } }) => {
+      return db.$transaction(async (tx) => {
+        const visita = await tx.visita.update({
+          where: { id },
+          data: {
+            ...data,
+            status: "REALIZADA",
+            dataRealizada: new Date(),
+            latCheckin: lat,
+            lngCheckin: lng,
+          },
+        });
+
+        await tx.domicilio.update({
+          where: { id: visita.domicilioId },
+          data: { ultimaVisita: new Date() },
+        });
+
+        return visita;
+      });
+    }),
+
   cancelar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
