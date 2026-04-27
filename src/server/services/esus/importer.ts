@@ -16,18 +16,6 @@ type TipoImport =
   | "ESUS_XML"
   | "ESUS_ZIP";
 
-function detectTipoFromFile(fileName: string): TipoImport {
-  const ext = extname(fileName).toLowerCase();
-  switch (ext) {
-    case ".xml":
-      return "ESUS_XML";
-    case ".zip":
-      return "ESUS_ZIP";
-    default:
-      return "ESUS_CSV_FICHA_A";
-  }
-}
-
 function generateExternalId(parts: string[]): string {
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 32);
 }
