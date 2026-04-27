@@ -11,6 +11,7 @@ import { visitaRouter } from "./visita";
 import { agendaRouter } from "./agenda";
 import { importacaoRouter } from "./importacao";
 import { exportacaoRouter } from "./exportacao";
+import { relatoriosRouter } from "./relatorios";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   agenda: agendaRouter,
   importacao: importacaoRouter,
   exportacao: exportacaoRouter,
+  relatorios: relatoriosRouter,
 });
 
 export type AppRouter = typeof appRouter;
