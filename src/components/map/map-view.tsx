@@ -36,6 +36,7 @@ export function MapView({
       container: containerRef.current,
       style: {
         version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
         sources: {
           osm: {
             type: "raster",
@@ -111,7 +112,7 @@ export function MapView({
           layout: {
             "text-field": ["get", "codigo"],
             "text-size": 14,
-            "text-font": ["Open Sans Regular"],
+            "text-font": ["Noto Sans Regular"],
           },
           paint: {
             "text-color": "#333333",
