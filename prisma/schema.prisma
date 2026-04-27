@@ -173,6 +173,7 @@ model Morador {
   externalId  String?
   criadoEm    DateTime  @default(now())
 
+  @@unique([domicilioId, externalId])
   @@index([domicilioId])
 }
 
@@ -193,6 +194,7 @@ model Visita {
   externalId    String?
   criadoEm      DateTime     @default(now())
 
+  @@unique([domicilioId, externalId])
   @@index([acsId, dataPrevista])
   @@index([domicilioId])
   @@index([status])

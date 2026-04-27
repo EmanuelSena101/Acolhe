@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 import type { Prisma } from "@prisma/client";
+import { processExportJob } from "@/server/services/esus/exporter";
 
 export const exportacaoRouter = createTRPCRouter({
   gerarCSV: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
@@ -22,6 +23,10 @@ export const exportacaoRouter = createTRPCRouter({
           filtros: input as unknown as Prisma.InputJsonValue,
           status: "PENDENTE",
         },
+      });
+
+      processExportJob(job.id).catch((err) => {
+        console.error(`Export CSV job ${job.id} failed:`, err);
       });
 
       return { jobId: job.id, status: "PENDENTE" };
@@ -45,6 +50,10 @@ export const exportacaoRouter = createTRPCRouter({
           filtros: input as unknown as Prisma.InputJsonValue,
           status: "PENDENTE",
         },
+      });
+
+      processExportJob(job.id).catch((err) => {
+        console.error(`Export XML job ${job.id} failed:`, err);
       });
 
       return { jobId: job.id, status: "PENDENTE" };
@@ -79,8 +88,13 @@ export const exportacaoRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const where: Record<string, unknown> = {};
+      if (ctx.session.user.papel !== "SUPERADMIN") {
+        where.prefeituraId = ctx.session.user.prefeituraId;
+      }
+
       return db.exportJob.findMany({
-        where: { usuarioId: ctx.session.user.id },
+        where,
         orderBy: { criadoEm: "desc" },
         take: input.limit,
         select: {

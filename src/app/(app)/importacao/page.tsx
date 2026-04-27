@@ -30,9 +30,9 @@ type StatusJob = keyof typeof STATUS_CONFIG;
 export default function ImportacaoPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [selectedTipo, setSelectedTipo] = useState<"FICHA_A" | "FICHA_B" | "VISITA" | "AUTO">(
-    "AUTO",
-  );
+  const [selectedTipo, setSelectedTipo] = useState<
+    "ESUS_CSV_FICHA_A" | "ESUS_CSV_FICHA_B" | "ESUS_CSV_VISITA" | "ESUS_XML" | "ESUS_ZIP" | "AUTO"
+  >("AUTO");
 
   const { data: jobs, refetch } = trpc.importacao.listarMeus.useQuery({ limit: 20 });
 
@@ -54,9 +54,18 @@ export default function ImportacaoPage() {
 
         if (!res.ok) throw new Error("Falha no upload");
 
-        const { uploadId } = (await res.json()) as { uploadId: string };
+        const { uploadId, fileName, size } = (await res.json()) as {
+          uploadId: string;
+          fileName: string;
+          size: number;
+        };
 
-        iniciarMutation.mutate({ uploadId, tipo: selectedTipo });
+        iniciarMutation.mutate({
+          uploadId,
+          fileName: fileName || file.name,
+          fileSize: size || file.size,
+          tipo: selectedTipo,
+        });
       } catch {
         alert("Erro ao fazer upload do arquivo.");
       } finally {
@@ -122,9 +131,10 @@ export default function ImportacaoPage() {
             className="rounded border border-gray-300 px-2 py-1 text-xs"
           >
             <option value="AUTO">Auto-detectar</option>
-            <option value="FICHA_A">Ficha A (Domicilios)</option>
-            <option value="FICHA_B">Ficha B (Moradores)</option>
-            <option value="VISITA">Ficha de Visita</option>
+            <option value="ESUS_CSV_FICHA_A">Ficha A (Domicilios)</option>
+            <option value="ESUS_CSV_FICHA_B">Ficha B (Moradores)</option>
+            <option value="ESUS_CSV_VISITA">Ficha de Visita</option>
+            <option value="ESUS_XML">XML (Pacote)</option>
           </select>
         </div>
 
