@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<esus>
+  <fichaCadastroDomiciliar>
+    <cnes>1234567</cnes>
+    <ine>1234567890</ine>
+    <microarea>001</microarea>
+    <logradouro>Rua das Flores</logradouro>
+    <numero>100</numero>
+    <bairro>Centro</bairro>
+    <cep>13230000</cep>
+    <tipo>CASA</tipo>
+    <nMoradores>4</nMoradores>
+    <externalId>uuid-dom-001</externalId>
+  </fichaCadastroDomiciliar>
+  <fichaCadastroDomiciliar>
+    <cnes>1234567</cnes>
+    <ine>1234567890</ine>
+    <microarea>002</microarea>
+    <logradouro>Av Brasil</logradouro>
+    <numero>50</numero>
+    <bairro>Jd Paulista</bairro>
+    <cep>13230010</cep>
+    <tipo>APARTAMENTO</tipo>
+    <nMoradores>2</nMoradores>
+    <externalId>uuid-dom-002</externalId>
+  </fichaCadastroDomiciliar>
+  <fichaCadastroIndividual>
+    <cnes>1234567</cnes>
+    <ine>1234567890</ine>
+    <microarea>001</microarea>
+    <logradouro>Rua das Flores</logradouro>
+    <numero>100</numero>
+    <nome>Maria Silva</nome>
+    <nascimento>1975-03-15</nascimento>
+    <sexo>F</sexo>
+    <cns>123456789012345</cns>
+    <condicoes>hipertensao|diabetes</condicoes>
+    <externalId>uuid-mor-001</externalId>
+  </fichaCadastroIndividual>
+  <fichaVisitaDomiciliar>
+    <cnes>1234567</cnes>
+    <ine>1234567890</ine>
+    <microarea>001</microarea>
+    <logradouro>Rua das Flores</logradouro>
+    <numero>100</numero>
+    <dataVisita>2025-04-25</dataVisita>
+    <status>REALIZADA</status>
+    <observacoes>Acompanhamento gestante</observacoes>
+    <externalId>uuid-vis-001</externalId>
+  </fichaVisitaDomiciliar>
+</esus>

@@ -116,6 +116,9 @@ export function validarData(str: string): { valido: boolean; data?: Date; erro?:
 }
 
 export function validarCoordenada(lat: number, lng: number): { valido: boolean; erro?: string } {
+  if (isNaN(lat) || isNaN(lng)) {
+    return { valido: false, erro: "Coordenadas invalidas (valores nao numericos)" };
+  }
   if (lat < -33.75 || lat > 5.27) {
     return {
       valido: false,

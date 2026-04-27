@@ -274,4 +274,20 @@ describe("validarCoordenada", () => {
     const r = validarCoordenada(48.85, 2.35);
     expect(r.valido).toBe(false);
   });
+
+  it("rejeita NaN como coordenada", () => {
+    const r = validarCoordenada(NaN, NaN);
+    expect(r.valido).toBe(false);
+    expect(r.erro).toContain("nao numericos");
+  });
+
+  it("rejeita NaN em latitude apenas", () => {
+    const r = validarCoordenada(NaN, -46.63);
+    expect(r.valido).toBe(false);
+  });
+
+  it("rejeita NaN em longitude apenas", () => {
+    const r = validarCoordenada(-23.55, NaN);
+    expect(r.valido).toBe(false);
+  });
 });
