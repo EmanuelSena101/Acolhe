@@ -106,10 +106,14 @@ export const relatoriosRouter = createTRPCRouter({
 
   visitasAtrasadas: protectedProcedure
     .input(
-      z.object({
-        ubsId: z.string().optional(),
-        prefeituraId: z.string().optional(),
-      }),
+      z
+        .object({
+          ubsId: z.string().optional(),
+          prefeituraId: z.string().optional(),
+        })
+        .refine((d) => d.ubsId || d.prefeituraId, {
+          message: "ubsId ou prefeituraId obrigatorio",
+        }),
     )
     .query(async ({ input }) => {
       const hoje = new Date();

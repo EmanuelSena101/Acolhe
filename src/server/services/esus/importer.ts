@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { basename, extname, join, resolve } from "path";
+import { basename, extname, join, resolve, sep } from "path";
 import { createHash } from "crypto";
 import { db } from "@/server/db";
 import { parseCSV, type CsvParseError, type CsvTipo } from "./csv-parser";
@@ -458,7 +458,7 @@ export async function processImportJob(jobId: string): Promise<void> {
     const resolvedPath = job.arquivoUrl.startsWith("/uploads/")
       ? join(UPLOADS_DIR, "..", job.arquivoUrl)
       : join(UPLOADS_DIR, safeFileName);
-    const absoluteUploads = resolve(UPLOADS_DIR);
+    const absoluteUploads = resolve(UPLOADS_DIR) + sep;
     const absoluteFile = resolve(resolvedPath);
 
     if (!absoluteFile.startsWith(absoluteUploads)) {

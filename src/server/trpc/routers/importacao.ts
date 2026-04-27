@@ -21,7 +21,7 @@ export const importacaoRouter = createTRPCRouter({
   iniciar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
     .input(
       z.object({
-        uploadId: z.string(),
+        uploadId: z.string().uuid(),
         fileName: z.string(),
         fileSize: z.number().int().min(0),
         tipo: z.enum([
