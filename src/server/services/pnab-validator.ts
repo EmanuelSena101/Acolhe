@@ -10,7 +10,7 @@ const MAX_POPULACAO_MICROAREA = 750;
 
 export async function validarPNAB(
   microareaId: string,
-  equipeId: string,
+  _equipeId?: string,
 ): Promise<PnabValidationResult> {
   const erros: string[] = [];
 
@@ -31,15 +31,7 @@ export async function validarPNAB(
     erros.push("POPULACAO_EXCEDIDA");
   }
 
-  const outrasNaEquipe = await db.microarea.findMany({
-    where: {
-      equipeId,
-      id: { not: microareaId },
-    },
-    select: { id: true, codigo: true },
-  });
-
-  if (outrasNaEquipe.length === 0 && populacaoEstimada === 0) {
+  if (populacaoEstimada === 0) {
     erros.push("MICROAREA_VAZIA");
   }
 

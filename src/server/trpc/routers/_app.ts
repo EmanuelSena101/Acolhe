@@ -8,6 +8,7 @@ import { microareaRouter } from "./microarea";
 import { domicilioRouter } from "./domicilio";
 import { moradorRouter } from "./morador";
 import { visitaRouter } from "./visita";
+import { agendaRouter } from "./agenda";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
   domicilio: domicilioRouter,
   morador: moradorRouter,
   visita: visitaRouter,
+  agenda: agendaRouter,
 });
 
 export type AppRouter = typeof appRouter;
