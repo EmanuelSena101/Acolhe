@@ -1,8 +1,21 @@
 import { z } from "zod";
+import { basename } from "path";
 import { createTRPCRouter, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 import type { Prisma } from "@prisma/client";
 import { processImportJob } from "@/server/services/esus/importer";
+
+function sanitizeFileName(raw: string): string {
+  return basename(raw).replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function escCSV(v: unknown): string {
+  const s = String(v ?? "");
+  if (s.includes(";") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
 
 export const importacaoRouter = createTRPCRouter({
   iniciar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
@@ -22,15 +35,16 @@ export const importacaoRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tipo = input.tipo === "AUTO" ? detectTipoFromFileName(input.fileName) : input.tipo;
+      const safeFileName = sanitizeFileName(input.fileName);
+      const tipo = input.tipo === "AUTO" ? detectTipoFromFileName(safeFileName) : input.tipo;
 
       const job = await db.importJob.create({
         data: {
           prefeituraId: ctx.session.user.prefeituraId ?? "",
           usuarioId: ctx.session.user.id,
           tipo,
-          arquivoNome: input.fileName,
-          arquivoUrl: `/uploads/${input.uploadId}/${input.fileName}`,
+          arquivoNome: safeFileName,
+          arquivoUrl: `/uploads/${input.uploadId}/${safeFileName}`,
           arquivoSize: input.fileSize,
           status: "PENDENTE",
         },
@@ -91,7 +105,7 @@ export const importacaoRouter = createTRPCRouter({
       const rows = (logEntries as Prisma.JsonArray)
         .map((entry) => {
           const e = entry as Record<string, unknown>;
-          return `${e.linha};${e.coluna};${e.valor};${e.erro};${e.severity}`;
+          return `${e.linha};${escCSV(e.coluna)};${escCSV(e.valor)};${escCSV(e.erro)};${e.severity}`;
         })
         .join("\n");
 

@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { extname, join } from "path";
+import { basename, extname, join, resolve } from "path";
 import { createHash } from "crypto";
 import { db } from "@/server/db";
 import { parseCSV, type CsvParseError, type CsvTipo } from "./csv-parser";
@@ -454,16 +454,36 @@ export async function processImportJob(jobId: string): Promise<void> {
   });
 
   try {
-    const filePath = join(
-      UPLOADS_DIR,
-      job.arquivoNome.includes("/") ? job.arquivoNome : `${job.arquivoNome}`,
-    );
+    const safeFileName = basename(job.arquivoNome);
+    const resolvedPath = job.arquivoUrl.startsWith("/uploads/")
+      ? join(UPLOADS_DIR, "..", job.arquivoUrl)
+      : join(UPLOADS_DIR, safeFileName);
+    const absoluteUploads = resolve(UPLOADS_DIR);
+    const absoluteFile = resolve(resolvedPath);
+
+    if (!absoluteFile.startsWith(absoluteUploads)) {
+      await db.importJob.update({
+        where: { id: jobId },
+        data: {
+          status: "ERRO",
+          concluidoEm: new Date(),
+          log: [
+            {
+              linha: 0,
+              coluna: "",
+              valor: "",
+              erro: "Caminho do arquivo invalido",
+              severity: "ERROR",
+            },
+          ],
+        },
+      });
+      return;
+    }
 
     let fileContent: string;
     try {
-      const rawBuffer = await readFile(
-        job.arquivoUrl.startsWith("/uploads/") ? join(UPLOADS_DIR, "..", job.arquivoUrl) : filePath,
-      );
+      const rawBuffer = await readFile(absoluteFile);
       fileContent = rawBuffer.toString("utf-8");
     } catch {
       await db.importJob.update({
@@ -491,6 +511,26 @@ export async function processImportJob(jobId: string): Promise<void> {
     let totalSucesso = 0;
     let totalErro = 0;
     const allErros: CsvParseError[] = [];
+
+    if (ext === ".zip" || tipo === "ESUS_ZIP") {
+      await db.importJob.update({
+        where: { id: jobId },
+        data: {
+          status: "ERRO",
+          concluidoEm: new Date(),
+          log: [
+            {
+              linha: 0,
+              coluna: "",
+              valor: "",
+              erro: "Importacao de arquivos ZIP ainda nao suportada. Extraia o conteudo e importe os arquivos CSV/XML individualmente.",
+              severity: "ERROR",
+            },
+          ],
+        },
+      });
+      return;
+    }
 
     if (ext === ".xml" || tipo === "ESUS_XML") {
       const xmlResult = await parseXML(fileContent);
