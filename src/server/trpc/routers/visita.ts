@@ -147,13 +147,14 @@ export const visitaRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input: { id, lat, lng, ...data } }) => {
+      const now = new Date();
       return db.$transaction(async (tx) => {
         const visita = await tx.visita.update({
           where: { id },
           data: {
             ...data,
             status: "REALIZADA",
-            dataRealizada: new Date(),
+            dataRealizada: now,
             latCheckin: lat,
             lngCheckin: lng,
           },
@@ -161,7 +162,7 @@ export const visitaRouter = createTRPCRouter({
 
         await tx.domicilio.update({
           where: { id: visita.domicilioId },
-          data: { ultimaVisita: new Date() },
+          data: { ultimaVisita: now },
         });
 
         return visita;
