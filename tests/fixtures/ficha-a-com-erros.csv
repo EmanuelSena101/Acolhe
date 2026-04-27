@@ -1,0 +1,6 @@
+cnes;ine;microarea;logradouro;numero;bairro;cep;tipo;n_moradores
+1234567;1234567890;001;Rua das Flores;100;Centro;13230000;CASA;4
+;1234567890;001;Rua Sem CNES;50;Centro;13230000;CASA;2
+1234567;1234567890;002;Av Brasil;50;Jd Paulista;13230010;APARTAMENTO;2
+1234567;;003;;200;Vila Nova;13230020;CASA;5
+1234567;1234567890;003;Rua Bahia;30;Jd Europa;13230030;CASA;2
