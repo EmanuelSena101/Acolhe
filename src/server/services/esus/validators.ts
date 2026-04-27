@@ -115,6 +115,22 @@ export function validarData(str: string): { valido: boolean; data?: Date; erro?:
   return { valido: false, erro: "Formato de data nao reconhecido (use DD/MM/YYYY ou YYYY-MM-DD)" };
 }
 
+export function validarCoordenada(lat: number, lng: number): { valido: boolean; erro?: string } {
+  if (lat < -33.75 || lat > 5.27) {
+    return {
+      valido: false,
+      erro: `Latitude ${lat} fora do range valido para Brasil (-33.75 a 5.27)`,
+    };
+  }
+  if (lng < -73.99 || lng > -34.79) {
+    return {
+      valido: false,
+      erro: `Longitude ${lng} fora do range valido para Brasil (-73.99 a -34.79)`,
+    };
+  }
+  return { valido: true };
+}
+
 export async function validarCNESExiste(
   cnes: string,
   prefeituraId: string,
