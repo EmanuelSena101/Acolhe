@@ -1,4 +1,5 @@
 import { type NextAuthConfig } from "next-auth";
+import type { Provider } from "next-auth/providers";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { db } from "@/server/db";
@@ -23,15 +24,8 @@ declare module "next-auth" {
   }
 }
 
-export const authConfig: NextAuthConfig = {
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60,
-  },
-  pages: {
-    signIn: "/login",
-  },
-  providers: [
+function buildProviders(): Provider[] {
+  const providers: Provider[] = [
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -64,7 +58,49 @@ export const authConfig: NextAuthConfig = {
         };
       },
     }),
-  ],
+  ];
+
+  const govbrId = process.env.GOVBR_CLIENT_ID;
+  const govbrSecret = process.env.GOVBR_CLIENT_SECRET;
+
+  if (govbrId && govbrSecret) {
+    providers.push({
+      id: "govbr",
+      name: "gov.br",
+      type: "oidc",
+      issuer: "https://sso.acesso.gov.br",
+      clientId: govbrId,
+      clientSecret: govbrSecret,
+      authorization: {
+        params: {
+          scope: "openid email profile govbr_empresa",
+          response_type: "code",
+        },
+      },
+      profile(profile: Record<string, unknown>) {
+        return {
+          id: profile.sub as string,
+          email: (profile.email ?? "") as string,
+          nome: (profile.name ?? profile.preferred_username ?? "") as string,
+          papel: "VISUALIZADOR",
+          prefeituraId: null,
+        };
+      },
+    });
+  }
+
+  return providers;
+}
+
+export const authConfig: NextAuthConfig = {
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60,
+  },
+  pages: {
+    signIn: "/login",
+  },
+  providers: buildProviders(),
   callbacks: {
     authorized({ auth: session, request: { nextUrl } }) {
       const isLoggedIn = !!session?.user;
@@ -100,3 +136,5 @@ export const authConfig: NextAuthConfig = {
     },
   },
 };
+
+export const govbrEnabled = !!(process.env.GOVBR_CLIENT_ID && process.env.GOVBR_CLIENT_SECRET);
