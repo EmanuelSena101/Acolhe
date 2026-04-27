@@ -29,7 +29,7 @@ echo "PostgreSQL is ready."
 
 # ── 2. Sync database schema ──────────────────────────────────────────
 echo "Syncing database schema (prisma db push)..."
-$PRISMA_CLI db push --skip-generate --accept-data-loss 2>&1
+$PRISMA_CLI db push --skip-generate 2>&1
 
 # ── 3. Apply PostGIS geometry columns ────────────────────────────────
 echo "Applying PostGIS extensions and geometry columns..."
@@ -85,4 +85,4 @@ echo ""
 echo "=== Starting SaudeTerritorio on port ${PORT:-3000} ==="
 echo "    Login: admin@saudeterritorio.dev / admin123"
 echo ""
-exec "$@"
+exec su-exec nextjs "$@"

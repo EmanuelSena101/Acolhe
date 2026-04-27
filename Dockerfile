@@ -20,8 +20,11 @@ RUN npm run build
 # ── runner ────────────────────────────────────────────────────────────
 FROM base AS runner
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl su-exec
 ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
 # Copy built Next.js app (standalone)
 COPY --from=builder /app/public ./public
