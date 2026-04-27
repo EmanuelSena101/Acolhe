@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
+import { validarPNAB } from "@/server/services/pnab-validator";
 
 export const microareaRouter = createTRPCRouter({
   list: protectedProcedure
@@ -91,6 +92,14 @@ export const microareaRouter = createTRPCRouter({
         data: { acsId: input.acsId },
       });
     }),
+
+  validate: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    const microarea = await db.microarea.findUniqueOrThrow({
+      where: { id: input.id },
+      select: { equipeId: true },
+    });
+    return validarPNAB(input.id, microarea.equipeId);
+  }),
 
   delete: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL"])
     .input(z.object({ id: z.string() }))
