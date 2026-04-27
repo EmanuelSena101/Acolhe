@@ -24,18 +24,22 @@ interface VisitaOrdem {
 
 const CONDICAO_COLORS: Record<string, string> = {
   gestante: "bg-pink-100 text-pink-800",
+  hipertensao: "bg-red-100 text-red-800",
   hipertenso: "bg-red-100 text-red-800",
+  diabetes: "bg-orange-100 text-orange-800",
   diabetico: "bg-orange-100 text-orange-800",
+  idoso_acamado: "bg-purple-100 text-purple-800",
   acamado: "bg-purple-100 text-purple-800",
   tuberculose: "bg-yellow-100 text-yellow-800",
   hanseniase: "bg-amber-100 text-amber-800",
+  doenca_respiratoria: "bg-teal-100 text-teal-800",
 };
 
 export default function MinhaAgendaPage() {
   const [dataAtual] = useState(() => new Date());
   const [selectedVisita, setSelectedVisita] = useState<VisitaOrdem | null>(null);
 
-  const { data: session } = trpc.auth.getSession.useQuery();
+  const { data: session, isLoading: isSessionLoading } = trpc.auth.getSession.useQuery();
 
   const acsId = session?.user?.acsId;
 
@@ -57,7 +61,7 @@ export default function MinhaAgendaPage() {
     gerarMutation.mutate({ acsId, data: dataAtual });
   };
 
-  if (isLoading) {
+  if (isLoading || isSessionLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-gray-500">Carregando agenda...</div>
@@ -93,7 +97,7 @@ export default function MinhaAgendaPage() {
           {/* Action bar */}
           <div className="flex gap-2">
             <a
-              href="/acs/novo-domicilio"
+              href="/novo-domicilio"
               className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700"
             >
               <Plus className="h-4 w-4" />
@@ -190,7 +194,7 @@ export default function MinhaAgendaPage() {
               )}
 
               <a
-                href={`/acs/visita/${selectedVisita.domicilioId}`}
+                href={`/visita/${selectedVisita.domicilioId}`}
                 className="mt-4 block w-full rounded-lg bg-green-600 py-3 text-center text-sm font-semibold text-white hover:bg-green-700"
               >
                 Iniciar visita

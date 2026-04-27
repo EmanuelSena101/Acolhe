@@ -52,9 +52,14 @@ export const exportacaoRouter = createTRPCRouter({
 
   status: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
     .input(z.object({ jobId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const where: Record<string, unknown> = { id: input.jobId };
+      if (ctx.session.user.papel !== "SUPERADMIN") {
+        where.prefeituraId = ctx.session.user.prefeituraId;
+      }
+
       const job = await db.exportJob.findUniqueOrThrow({
-        where: { id: input.jobId },
+        where: { id: input.jobId, ...where },
       });
 
       return {

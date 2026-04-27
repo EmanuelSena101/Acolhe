@@ -29,10 +29,13 @@ export const importacaoRouter = createTRPCRouter({
 
   status: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
     .input(z.object({ jobId: z.string() }))
-    .query(async ({ input }) => {
-      const job = await db.importJob.findUniqueOrThrow({
-        where: { id: input.jobId },
-      });
+    .query(async ({ ctx, input }) => {
+      const where: Record<string, unknown> = { id: input.jobId };
+      if (ctx.session.user.papel !== "SUPERADMIN") {
+        where.prefeituraId = ctx.session.user.prefeituraId;
+      }
+
+      const job = await db.importJob.findUniqueOrThrow({ where: { id: input.jobId, ...where } });
 
       const logEntries = Array.isArray(job.log) ? job.log : [];
       const primeirosErros = (logEntries as Prisma.JsonArray).slice(0, 100);

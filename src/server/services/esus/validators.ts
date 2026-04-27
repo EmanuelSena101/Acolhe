@@ -79,15 +79,33 @@ export function validarData(str: string): { valido: boolean; data?: Date; erro?:
 
   let match = str.match(ddmmyyyy);
   if (match) {
-    const d = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
-    if (isNaN(d.getTime())) return { valido: false, erro: "Data invalida" };
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const year = parseInt(match[3], 10);
+    const d = new Date(year, month, day);
+    if (
+      isNaN(d.getTime()) ||
+      d.getFullYear() !== year ||
+      d.getMonth() !== month ||
+      d.getDate() !== day
+    )
+      return { valido: false, erro: "Data invalida" };
     return { valido: true, data: d };
   }
 
   match = str.match(yyyymmdd);
   if (match) {
-    const d = new Date(str);
-    if (isNaN(d.getTime())) return { valido: false, erro: "Data invalida" };
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const d = new Date(year, month, day);
+    if (
+      isNaN(d.getTime()) ||
+      d.getFullYear() !== year ||
+      d.getMonth() !== month ||
+      d.getDate() !== day
+    )
+      return { valido: false, erro: "Data invalida" };
     return { valido: true, data: d };
   }
 

@@ -1,18 +1,20 @@
 import { db } from "@/server/db";
 import type { Prisma } from "@prisma/client";
 
-const REGRAS_FREQUENCIA = {
+const REGRAS_FREQUENCIA: Record<string, number> = {
   gestante: 30,
+  hipertensao: 90,
   hipertenso: 90,
+  diabetes: 90,
   diabetico: 90,
+  idoso_acamado: 30,
   acamado: 30,
   deficiente: 90,
   cancer: 60,
   doenca_respiratoria: 90,
-  hanseníase: 30,
+  hanseniase: 30,
   tuberculose: 30,
-  default: 180,
-} as const;
+};
 
 const MAX_VISITAS_DIA = 12;
 
@@ -21,13 +23,14 @@ function getDiasDesdeUltimaVisita(ultimaVisita: Date | null): number {
   return Math.floor((Date.now() - ultimaVisita.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getFrequenciaMinima(condicoes: string[]): number {
-  if (condicoes.length === 0) return REGRAS_FREQUENCIA.default;
+const DEFAULT_FREQUENCIA = 180;
 
-  let min: number = REGRAS_FREQUENCIA.default;
+function getFrequenciaMinima(condicoes: string[]): number {
+  if (condicoes.length === 0) return DEFAULT_FREQUENCIA;
+
+  let min = DEFAULT_FREQUENCIA;
   for (const c of condicoes) {
-    const key = c.toLowerCase() as keyof typeof REGRAS_FREQUENCIA;
-    const freq: number = REGRAS_FREQUENCIA[key] ?? REGRAS_FREQUENCIA.default;
+    const freq = REGRAS_FREQUENCIA[c.toLowerCase()] ?? DEFAULT_FREQUENCIA;
     if (freq < min) min = freq;
   }
   return min;
