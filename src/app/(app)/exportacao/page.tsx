@@ -17,7 +17,13 @@ export default function ExportacaoPage() {
 
   const { data: jobStatus } = trpc.exportacao.status.useQuery(
     { jobId: jobId! },
-    { enabled: !!jobId, refetchInterval: 2000 },
+    {
+      enabled: !!jobId,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === "CONCLUIDO" || status === "ERRO" ? false : 2000;
+      },
+    },
   );
 
   const { data: exports } = trpc.exportacao.listar.useQuery({ limit: 20 });
