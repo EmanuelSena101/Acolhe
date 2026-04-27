@@ -131,7 +131,10 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
             {visibleItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive =
+                pathname === item.href ||
+                (pathname.startsWith(item.href + "/") &&
+                  !visibleItems.some((other) => other !== item && pathname.startsWith(other.href)));
               return (
                 <li key={item.href}>
                   <Link
