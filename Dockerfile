@@ -39,6 +39,10 @@ COPY --from=builder /app/package.json ./package.json
 # The standalone server.js bundles its own deps so no conflict
 COPY --from=builder /app/node_modules ./node_modules
 
+# Writable directories for non-root user
+RUN mkdir -p /app/public/uploads /app/.next/cache \
+ && chown -R nextjs:nodejs /app/public/uploads /app/.next/cache
+
 # Copy entrypoint
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
