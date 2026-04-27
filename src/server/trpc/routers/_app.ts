@@ -9,6 +9,8 @@ import { domicilioRouter } from "./domicilio";
 import { moradorRouter } from "./morador";
 import { visitaRouter } from "./visita";
 import { agendaRouter } from "./agenda";
+import { importacaoRouter } from "./importacao";
+import { exportacaoRouter } from "./exportacao";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -21,6 +23,8 @@ export const appRouter = createTRPCRouter({
   morador: moradorRouter,
   visita: visitaRouter,
   agenda: agendaRouter,
+  importacao: importacaoRouter,
+  exportacao: exportacaoRouter,
 });
 
 export type AppRouter = typeof appRouter;
