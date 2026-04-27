@@ -56,7 +56,16 @@ export const ubsRouter = createTRPCRouter({
         endereco: z.string().min(2).max(500).optional(),
       }),
     )
-    .mutation(async ({ input: { id, ...data } }) => {
+    .mutation(async ({ ctx, input: { id, ...data } }) => {
+      if (ctx.session.user.papel === "COORD_MUNICIPAL") {
+        const ubs = await db.uBS.findUniqueOrThrow({
+          where: { id },
+          select: { prefeituraId: true },
+        });
+        if (ubs.prefeituraId !== ctx.session.user.prefeituraId) {
+          throw new Error("Voce so pode atualizar UBS na sua prefeitura.");
+        }
+      }
       return db.uBS.update({ where: { id }, data });
     }),
 
