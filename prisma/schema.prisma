@@ -1,0 +1,272 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+enum Papel {
+  SUPERADMIN
+  COORD_MUNICIPAL
+  GERENTE_UBS
+  ACS
+  VISUALIZADOR
+}
+
+enum StatusVisita {
+  PENDENTE
+  REALIZADA
+  RECUSADA
+  AUSENTE
+  CANCELADA
+}
+
+enum TipoDomicilio {
+  CASA
+  APARTAMENTO
+  COMODO
+  OUTRO
+}
+
+enum Sexo {
+  MASCULINO
+  FEMININO
+  OUTRO
+}
+
+enum StatusJob {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+  CONCLUIDO_COM_ERROS
+  ERRO
+}
+
+model Prefeitura {
+  id       String   @id @default(cuid())
+  ibgeCode String   @unique
+  nome     String
+  uf       String   @db.Char(2)
+  ativa    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+
+  usuarios Usuario[]
+  ubss     UBS[]
+}
+
+model Usuario {
+  id           String      @id @default(cuid())
+  prefeituraId String?
+  prefeitura   Prefeitura? @relation(fields: [prefeituraId], references: [id])
+  email        String      @unique
+  nome         String
+  cpf          String?     @unique
+  senhaHash    String?
+  govbrSub     String?     @unique
+  papel        Papel
+  ativo        Boolean     @default(true)
+  ultimoLogin  DateTime?
+  criadoEm     DateTime    @default(now())
+
+  acs       ACS?
+  auditLogs AuditLog[]
+}
+
+model UBS {
+  id           String     @id @default(cuid())
+  prefeituraId String
+  prefeitura   Prefeitura @relation(fields: [prefeituraId], references: [id])
+  cnes         String     @unique
+  nome         String
+  endereco     String
+
+  equipes EquipeESF[]
+
+  @@index([prefeituraId])
+}
+
+model EquipeESF {
+  id    String  @id @default(cuid())
+  ubsId String
+  ubs   UBS     @relation(fields: [ubsId], references: [id])
+  ine   String  @unique
+  nome  String
+  cor   String
+  ativa Boolean @default(true)
+
+  acss       ACS[]
+  microareas Microarea[]
+}
+
+model ACS {
+  id           String    @id @default(cuid())
+  usuarioId    String    @unique
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id])
+  equipeId     String
+  equipe       EquipeESF @relation(fields: [equipeId], references: [id])
+  matricula    String    @unique
+  cargaHoraria Int       @default(40)
+  ativo        Boolean   @default(true)
+
+  microareas Microarea[]
+  visitas    Visita[]
+  agendas    AgendaDia[]
+}
+
+model Microarea {
+  id                String    @id @default(cuid())
+  equipeId          String
+  equipe            EquipeESF @relation(fields: [equipeId], references: [id])
+  acsId             String?
+  acs               ACS?      @relation(fields: [acsId], references: [id])
+  codigo            String
+  populacaoEstimada Int       @default(0)
+  validada          Boolean   @default(false)
+
+  domicilios Domicilio[]
+
+  @@unique([equipeId, codigo])
+}
+
+model Domicilio {
+  id              String        @id @default(cuid())
+  microareaId     String
+  microarea       Microarea     @relation(fields: [microareaId], references: [id])
+  cep             String?
+  logradouro      String
+  numero          String
+  complemento     String?
+  bairro          String
+  tipo            TipoDomicilio @default(CASA)
+  nMoradores      Int           @default(0)
+  condicoesMoradia Json         @default("{}")
+  fotoUrl         String?
+  ultimaVisita    DateTime?
+  externalId      String?
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+
+  moradores Morador[]
+  visitas   Visita[]
+
+  @@unique([microareaId, externalId])
+  @@index([microareaId])
+}
+
+model Morador {
+  id          String    @id @default(cuid())
+  domicilioId String
+  domicilio   Domicilio @relation(fields: [domicilioId], references: [id])
+  cns         String?   @unique
+  cpf         String?
+  nome        String
+  nascimento  DateTime
+  sexo        Sexo
+  condicoes   Json      @default("[]")
+  prioridade  Int       @default(0)
+  vinculo     String?
+  ativo       Boolean   @default(true)
+  externalId  String?
+  criadoEm    DateTime  @default(now())
+
+  @@index([domicilioId])
+}
+
+model Visita {
+  id            String       @id @default(cuid())
+  acsId         String
+  acs           ACS          @relation(fields: [acsId], references: [id])
+  domicilioId   String
+  domicilio     Domicilio    @relation(fields: [domicilioId], references: [id])
+  dataPrevista  DateTime
+  dataRealizada DateTime?
+  status        StatusVisita @default(PENDENTE)
+  motivoRecusa  String?
+  observacoes   String?
+  duracaoMin    Int?
+  externalId    String?
+  criadoEm      DateTime     @default(now())
+
+  @@index([acsId, dataPrevista])
+  @@index([domicilioId])
+  @@index([status])
+}
+
+model AgendaDia {
+  id           String   @id @default(cuid())
+  acsId        String
+  acs          ACS      @relation(fields: [acsId], references: [id])
+  data         DateTime @db.Date
+  visitasOrdem Json
+  geradaEm     DateTime @default(now())
+
+  @@unique([acsId, data])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+  acao       String
+  entidade   String
+  entidadeId String?
+  payload    Json?
+  ip         String?
+  userAgent  String?
+  criadoEm   DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@index([criadoEm])
+}
+
+model GeocodingCache {
+  id       String   @id @default(cuid())
+  query    String   @unique
+  lat      Float
+  lng      Float
+  raw      Json
+  criadoEm DateTime @default(now())
+}
+
+model RoutingCache {
+  id       String   @id @default(cuid())
+  hash     String   @unique
+  matriz   Json
+  criadoEm DateTime @default(now())
+}
+
+model ImportJob {
+  id           String    @id @default(cuid())
+  prefeituraId String
+  usuarioId    String
+  tipo         String
+  arquivoNome  String
+  arquivoUrl   String
+  arquivoSize  Int
+  status       StatusJob @default(PENDENTE)
+  totalLinhas  Int       @default(0)
+  totalSucesso Int       @default(0)
+  totalErro    Int       @default(0)
+  log          Json      @default("[]")
+  iniciadoEm   DateTime?
+  concluidoEm  DateTime?
+  criadoEm     DateTime  @default(now())
+
+  @@index([prefeituraId, criadoEm])
+}
+
+model ExportJob {
+  id           String    @id @default(cuid())
+  prefeituraId String
+  usuarioId    String
+  tipo         String
+  filtros      Json
+  arquivoUrl   String?
+  status       StatusJob @default(PENDENTE)
+  criadoEm     DateTime  @default(now())
+  concluidoEm  DateTime?
+}
