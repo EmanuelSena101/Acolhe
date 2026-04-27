@@ -105,15 +105,27 @@ export const relatoriosRouter = createTRPCRouter({
     }),
 
   visitasAtrasadas: protectedProcedure
-    .input(z.object({ ubsId: z.string() }))
+    .input(
+      z.object({
+        ubsId: z.string().optional(),
+        prefeituraId: z.string().optional(),
+      }),
+    )
     .query(async ({ input }) => {
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
 
+      const ubsFilter: Record<string, unknown> = {};
+      if (input.ubsId) {
+        ubsFilter.ubsId = input.ubsId;
+      } else if (input.prefeituraId) {
+        ubsFilter.ubs = { prefeituraId: input.prefeituraId };
+      }
+
       const whereAtrasadas = {
         status: "PENDENTE" as const,
         dataPrevista: { lt: hoje },
-        acs: { equipe: { ubsId: input.ubsId } },
+        acs: { equipe: ubsFilter },
       };
 
       const [total, atrasadas] = await Promise.all([
