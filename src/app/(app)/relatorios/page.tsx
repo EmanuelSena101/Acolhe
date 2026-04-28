@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Download, FileText } from "lucide-react";
+import {
+  StatusVisitasChart,
+  CondicoesChart,
+  CoberturaPorUbsChart,
+  ProdutividadeAcsChart,
+  VisitasPorDiaChart,
+} from "@/components/charts/relatorio-charts";
 
 export default function RelatoriosPage() {
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
@@ -25,6 +32,11 @@ export default function RelatoriosPage() {
 
   const { data: atrasadas } = trpc.relatorios.visitasAtrasadas.useQuery(
     { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
+  const { data: charts } = trpc.relatorios.charts.useQuery(
+    { prefeituraId: prefeituraId!, mes: periodo.mes, ano: periodo.ano },
     { enabled: !!prefeituraId },
   );
 
@@ -207,6 +219,20 @@ export default function RelatoriosPage() {
             <p className="text-sm text-gray-500">Visitas Atrasadas</p>
             <p className="text-2xl font-bold text-red-700">{atrasadas?.total ?? "—"}</p>
           </div>
+        </div>
+      )}
+
+      {charts && (
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <StatusVisitasChart data={charts.statusVisitas} />
+            <CondicoesChart data={charts.condicoes} />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CoberturaPorUbsChart data={charts.coberturaPorUbs} />
+            <ProdutividadeAcsChart data={charts.produtividadeAcs} />
+          </div>
+          <VisitasPorDiaChart data={charts.visitasPorDia} />
         </div>
       )}
 
