@@ -32,6 +32,9 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
+# Copy bootstrap script (idempotent: db push + PostGIS + seed)
+COPY --from=builder /app/scripts ./scripts
+
 # Copy full node_modules (needed for prisma CLI, tsx, seed deps)
 # The standalone server.js bundles its own deps so no conflict
 COPY --from=builder /app/node_modules ./node_modules
