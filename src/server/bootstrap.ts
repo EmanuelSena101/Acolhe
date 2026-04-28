@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
+import { execSync } from "child_process";
+import { existsSync, readFileSync, readdirSync } from "fs";
+import path from "path";
 import { db } from "./db";
 
 let bootstrapped = false;
