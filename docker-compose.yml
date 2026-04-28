@@ -47,7 +47,7 @@ services:
       AUTH_TRUST_HOST: "true"
       UPLOADS_DIR: ./public/uploads
       MAX_UPLOAD_SIZE_MB: "20"
-      OSM_USER_AGENT: "SaudeTerritorio-MVP/1.0"
+      OSM_USER_AGENT: "Acolhe-MVP/1.0"
       NODE_ENV: production
 
 volumes:

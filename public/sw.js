@@ -1,4 +1,4 @@
-const CACHE_NAME = "saude-territorio-v1";
+const CACHE_NAME = "acolhe-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

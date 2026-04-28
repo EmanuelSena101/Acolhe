@@ -1,6 +1,6 @@
 # Formatos e-SUS APS — Contrato de Import/Export
 
-> Este documento define o contrato exaustivo dos formatos aceitos pelo importador e gerados pelo exportador do SaúdeTerritório.
+> Este documento define o contrato exaustivo dos formatos aceitos pelo importador e gerados pelo exportador do Acolhe.
 > Qualquer arquivo externo que respeite este contrato será importado sem alteração de código.
 
 ## Status: FINALIZADO
@@ -396,7 +396,7 @@ O exportador gera arquivos no mesmo formato aceito pelo importador, garantindo r
 ## 12. Notas de Compatibilidade com e-SUS APS
 
 > O e-SUS APS oficial exporta em formatos proprietários (Thrift, PEC database dump).
-> O SaúdeTerritório **não** suporta o formato Thrift — apenas CSV e XML.
+> O Acolhe **não** suporta o formato Thrift — apenas CSV e XML.
 >
 > Para compatibilidade, o time comercial deve usar a funcionalidade de "Exportar CSV"
 > do PEC, que gera arquivos compatíveis com este contrato.

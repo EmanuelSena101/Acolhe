@@ -2,7 +2,7 @@
 
 ## Visao Geral
 
-O SaudeTerritorio suporta login institucional via **gov.br** (OAuth 2.0 / OIDC).
+O Acolhe suporta login institucional via **gov.br** (OAuth 2.0 / OIDC).
 Servidores publicos podem acessar o sistema usando suas credenciais gov.br.
 
 ## Ambientes

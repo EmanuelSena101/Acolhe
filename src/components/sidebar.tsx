@@ -124,7 +124,7 @@ export function Sidebar() {
       >
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link href="/dashboard" className="text-xl font-bold text-blue-900">
-            SaudeTerritorio
+            Acolhe
           </Link>
           <button
             onClick={() => setMobileOpen(false)}

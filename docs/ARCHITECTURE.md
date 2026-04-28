@@ -1,4 +1,4 @@
-# Arquitetura — SaudeTerritorio
+# Arquitetura — Acolhe
 
 ## Visao Geral
 

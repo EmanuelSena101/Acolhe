@@ -90,7 +90,7 @@ export default function RelatoriosPage() {
     const doc = new jsPDF();
 
     doc.setFontSize(18);
-    doc.text("SaudeTerritorio - Relatorio de Cobertura", 14, 22);
+    doc.text("Acolhe - Relatorio de Cobertura", 14, 22);
 
     doc.setFontSize(11);
     doc.text(`Periodo: ${periodo.mes}/${periodo.ano}`, 14, 32);

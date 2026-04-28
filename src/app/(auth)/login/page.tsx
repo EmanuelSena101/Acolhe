@@ -39,7 +39,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
       <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-blue-900">SaudeTerritorio</h1>
+          <h1 className="text-3xl font-bold text-blue-900">Acolhe</h1>
           <p className="mt-2 text-sm text-gray-600">
             Gestao territorial da Atencao Primaria a Saude
           </p>

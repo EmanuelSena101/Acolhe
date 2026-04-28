@@ -1,6 +1,6 @@
 {
-  "name": "SaudeTerritorio",
-  "short_name": "SaudeTerritorio",
+  "name": "Acolhe",
+  "short_name": "Acolhe",
   "description": "Gestao territorial da Atencao Primaria a Saude",
   "start_url": "/",
   "display": "standalone",

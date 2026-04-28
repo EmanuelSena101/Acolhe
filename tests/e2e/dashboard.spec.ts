@@ -15,7 +15,7 @@ test.describe("Dashboard", () => {
   });
 
   test("should display sidebar navigation", async ({ page }) => {
-    await expect(page.getByText(/saudeterritorio/i).first()).toBeVisible();
+    await expect(page.getByText(/acolhe/i).first()).toBeVisible();
     await expect(page.getByText(/painel/i).first()).toBeVisible();
     await expect(page.getByText(/territorio/i).first()).toBeVisible();
   });

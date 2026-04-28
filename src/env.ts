@@ -15,7 +15,7 @@ export const env = createEnv({
     SENTRY_DSN: z.string().optional(),
     UPLOADS_DIR: z.string().default("./public/uploads"),
     MAX_UPLOAD_SIZE_MB: z.coerce.number().default(20),
-    OSM_USER_AGENT: z.string().default("SaudeTerritorio-MVP/1.0 (contato@example.com)"),
+    OSM_USER_AGENT: z.string().default("Acolhe-MVP/1.0 (contato@example.com)"),
   },
   client: {},
   runtimeEnv: {
