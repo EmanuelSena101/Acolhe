@@ -60,32 +60,57 @@ async function applyRawMigrations(db) {
   const dirs = readdirSync(MIGRATIONS_DIR)
     .filter((d) => /^\d+_/.test(d))
     .sort();
+  let ran = 0;
+  let skipped = 0;
   for (const dir of dirs) {
     const file = path.join(MIGRATIONS_DIR, dir, "migration.sql");
     if (!existsSync(file)) continue;
-    const sql = readFileSync(file, "utf-8");
+    const raw = readFileSync(file, "utf-8");
+    // Strip line comments BEFORE splitting on ; so statements that
+    // begin with a "-- comment" line aren't dropped wholesale.
+    const sql = raw
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
     const statements = sql
       .split(";")
       .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith("--"));
+      .filter((s) => s.length > 0);
     for (const stmt of statements) {
       try {
         await db.$executeRawUnsafe(stmt);
+        ran++;
       } catch {
-        // idempotent
+        skipped++;
       }
     }
   }
-  console.log("[bootstrap] raw migrations applied.");
+  console.log(`[bootstrap] raw migrations applied (ran=${ran}, skipped=${skipped}).`);
 }
 
 async function ensureSeed(db) {
   let needsSeed = false;
   try {
     const count = await db.prefeitura.count();
-    needsSeed = count === 0;
+    if (count === 0) {
+      needsSeed = true;
+    } else {
+      // Detect inconsistent state: prefeituras exist but no geometry
+      // (a prior failed seed leaves rows without geom, blocking re-seed).
+      const rows = await db.$queryRawUnsafe(
+        `SELECT COUNT(*)::int AS missing FROM "Prefeitura" WHERE geom IS NULL`,
+      );
+      const missing = rows && rows[0] ? Number(rows[0].missing) : 0;
+      if (missing > 0) {
+        console.warn(
+          `[bootstrap] inconsistent state: ${missing} prefeituras without geom — wiping for fresh seed…`,
+        );
+        await db.$executeRawUnsafe('TRUNCATE "Prefeitura" CASCADE');
+        needsSeed = true;
+      }
+    }
   } catch (err) {
-    console.warn("[bootstrap] could not count prefeituras:", err && err.message);
+    console.warn("[bootstrap] could not check seed state:", err && err.message);
     return;
   }
   if (!needsSeed) {
@@ -96,7 +121,7 @@ async function ensureSeed(db) {
     console.warn("[bootstrap] seed file or tsx not found — skipping.");
     return;
   }
-  console.log("[bootstrap] seeding database (first run)…");
+  console.log("[bootstrap] seeding database…");
   execSync(`node "${TSX_CLI}" "${SEED_FILE}"`, {
     stdio: "inherit",
     cwd: ROOT,
