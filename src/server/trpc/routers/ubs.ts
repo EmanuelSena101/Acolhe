@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
+import { rowsToFeatureCollection } from "@/lib/geo";
 
 export const ubsRouter = createTRPCRouter({
   list: protectedProcedure
@@ -13,6 +15,23 @@ export const ubsRouter = createTRPCRouter({
           _count: { select: { equipes: true } },
         },
       });
+    }),
+
+  listGeoJSON: protectedProcedure
+    .input(z.object({ prefeituraId: z.string() }))
+    .query(async ({ input }) => {
+      type Row = { id: string; nome: string; cnes: string; geojson: string | null };
+      const rows = await db.$queryRaw<Row[]>(
+        Prisma.sql`SELECT id, nome, cnes, ST_AsGeoJSON(geom) AS geojson
+                   FROM "UBS"
+                   WHERE "prefeituraId" = ${input.prefeituraId}
+                   AND geom IS NOT NULL`,
+      );
+      return rowsToFeatureCollection<Row>(rows, (r) => ({
+        id: r.id,
+        nome: r.nome,
+        cnes: r.cnes,
+      }));
     }),
 
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {

@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
+import { rowsToFeatureCollection, getMunicipioBounds } from "@/lib/geo";
 
 export const prefeituraRouter = createTRPCRouter({
   list: protectedProcedure.query(async () => {
@@ -31,6 +33,21 @@ export const prefeituraRouter = createTRPCRouter({
       },
     });
   }),
+
+  geoJSON: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      type Row = { id: string; nome: string; geojson: string | null };
+      const rows = await db.$queryRaw<Row[]>(
+        Prisma.sql`SELECT id, nome, ST_AsGeoJSON(geom) AS geojson
+                   FROM "Prefeitura"
+                   WHERE id = ${input.id}
+                   AND geom IS NOT NULL`,
+      );
+      const fc = rowsToFeatureCollection<Row>(rows, (r) => ({ id: r.id, nome: r.nome }));
+      const bounds = await getMunicipioBounds(input.id);
+      return { featureCollection: fc, bounds };
+    }),
 
   getByIbge: protectedProcedure
     .input(z.object({ ibgeCode: z.string() }))

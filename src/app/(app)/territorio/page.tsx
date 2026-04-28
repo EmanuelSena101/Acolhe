@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MapView } from "@/components/map/map-view";
 import { trpc } from "@/lib/trpc";
 import { X } from "lucide-react";
+
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 const STATUS_COLORS = {
   em_dia: "#2ECC71",
@@ -39,15 +41,44 @@ export default function TerritorioPage() {
     { enabled: !!selectedMicroareaId },
   );
 
-  const microareasGeoJSON: GeoJSON.FeatureCollection = {
-    type: "FeatureCollection",
-    features: [],
-  };
+  const { data: microareasFC } = trpc.microarea.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
 
-  const domiciliosGeoJSON: GeoJSON.FeatureCollection = {
-    type: "FeatureCollection",
-    features: [],
-  };
+  const { data: domiciliosFC } = trpc.domicilio.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId, refetchInterval: 10000 },
+  );
+
+  const { data: ubsFC } = trpc.ubs.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
+  const { data: prefeituraGeo } = trpc.prefeitura.geoJSON.useQuery(
+    { id: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
+  const microareasGeoJSON = useMemo(
+    () => (microareasFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [microareasFC],
+  );
+  const domiciliosGeoJSON = useMemo(
+    () => (domiciliosFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [domiciliosFC],
+  );
+  const ubsGeoJSON = useMemo(
+    () => (ubsFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [ubsFC],
+  );
+  const prefeituraGeoJSON = useMemo(
+    () =>
+      (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [prefeituraGeo],
+  );
+  const bounds = prefeituraGeo?.bounds ?? null;
 
   return (
     <div className="flex h-[calc(100vh-2rem)] flex-col gap-4 lg:h-[calc(100vh-4rem)]">
@@ -102,6 +133,9 @@ export default function TerritorioPage() {
           <MapView
             microareas={microareasGeoJSON}
             domicilios={domiciliosGeoJSON}
+            ubs={ubsGeoJSON}
+            municipio={prefeituraGeoJSON}
+            bounds={bounds}
             onMicroareaClick={(id) => setSelectedMicroareaId(id)}
           />
         </div>

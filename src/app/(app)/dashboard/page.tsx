@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { MapView } from "@/components/map/map-view";
 import { Home, Activity, AlertTriangle, Users, TrendingUp, FileText, Download } from "lucide-react";
+
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 export default function DashboardPage() {
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
@@ -36,6 +39,41 @@ export default function DashboardPage() {
 
   const { data: imports } = trpc.importacao.listarMeus.useQuery({ limit: 5 });
   const { data: exports } = trpc.exportacao.listar.useQuery({ limit: 5 });
+
+  const { data: microareasFC } = trpc.microarea.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+  const { data: domiciliosFC } = trpc.domicilio.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId, refetchInterval: 10000 },
+  );
+  const { data: ubsFC } = trpc.ubs.listGeoJSON.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+  const { data: prefeituraGeo } = trpc.prefeitura.geoJSON.useQuery(
+    { id: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
+  const microareasGeoJSON = useMemo(
+    () => (microareasFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [microareasFC],
+  );
+  const domiciliosGeoJSON = useMemo(
+    () => (domiciliosFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [domiciliosFC],
+  );
+  const ubsGeoJSON = useMemo(
+    () => (ubsFC as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [ubsFC],
+  );
+  const prefeituraGeoJSON = useMemo(
+    () =>
+      (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    [prefeituraGeo],
+  );
 
   const cards = [
     {
@@ -145,6 +183,40 @@ export default function DashboardPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Mapa de gestao */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-3">
+          <h2 className="font-semibold text-gray-800">Mapa de gestao</h2>
+          <div className="flex items-center gap-3 text-xs text-gray-600">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+              Em dia
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
+              Proximo prazo
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+              Atrasado
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-3 w-3 rounded-full bg-blue-700" />
+              UBS
+            </span>
+          </div>
+        </div>
+        <div className="h-[480px] w-full">
+          <MapView
+            microareas={microareasGeoJSON}
+            domicilios={domiciliosGeoJSON}
+            ubs={ubsGeoJSON}
+            municipio={prefeituraGeoJSON}
+            bounds={prefeituraGeo?.bounds ?? null}
+          />
+        </div>
       </div>
 
       {/* Cobertura Detail Card */}

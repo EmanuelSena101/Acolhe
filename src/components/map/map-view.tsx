@@ -4,12 +4,22 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+interface Bounds {
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+}
+
 interface MapViewProps {
   className?: string;
   center?: [number, number];
   zoom?: number;
   microareas?: GeoJSON.FeatureCollection;
   domicilios?: GeoJSON.FeatureCollection;
+  ubs?: GeoJSON.FeatureCollection;
+  municipio?: GeoJSON.FeatureCollection;
+  bounds?: Bounds | null;
   onMicroareaClick?: (_id: string) => void;
 }
 
@@ -22,6 +32,9 @@ export function MapView({
   zoom = DEFAULT_ZOOM,
   microareas,
   domicilios,
+  ubs,
+  municipio,
+  bounds,
   onMicroareaClick,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -220,6 +233,94 @@ export function MapView({
       map.on("load", handler);
     }
   }, [domicilios]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !municipio) return;
+
+    const handler = () => {
+      if (map.getSource("municipio")) {
+        (map.getSource("municipio") as maplibregl.GeoJSONSource).setData(municipio);
+      } else {
+        map.addSource("municipio", { type: "geojson", data: municipio });
+        map.addLayer({
+          id: "municipio-outline",
+          type: "line",
+          source: "municipio",
+          paint: {
+            "line-color": "#1f2937",
+            "line-width": 2,
+            "line-dasharray": [4, 2],
+          },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) handler();
+    else map.on("load", handler);
+  }, [municipio]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ubs) return;
+
+    const handler = () => {
+      if (map.getSource("ubs")) {
+        (map.getSource("ubs") as maplibregl.GeoJSONSource).setData(ubs);
+      } else {
+        map.addSource("ubs", { type: "geojson", data: ubs });
+        map.addLayer({
+          id: "ubs-points",
+          type: "circle",
+          source: "ubs",
+          paint: {
+            "circle-radius": 9,
+            "circle-color": "#1d4ed8",
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#ffffff",
+          },
+        });
+        map.addLayer({
+          id: "ubs-label",
+          type: "symbol",
+          source: "ubs",
+          layout: {
+            "text-field": ["get", "nome"],
+            "text-size": 11,
+            "text-font": ["Noto Sans Regular"],
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+          },
+          paint: {
+            "text-color": "#1d4ed8",
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 1.5,
+          },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) handler();
+    else map.on("load", handler);
+  }, [ubs]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+
+    const apply = () => {
+      map.fitBounds(
+        [
+          [bounds.minLng, bounds.minLat],
+          [bounds.maxLng, bounds.maxLat],
+        ],
+        { padding: 40, duration: 800 },
+      );
+    };
+
+    if (map.isStyleLoaded()) apply();
+    else map.on("load", apply);
+  }, [bounds]);
 
   return <div ref={containerRef} className={`h-full w-full ${className}`} />;
 }

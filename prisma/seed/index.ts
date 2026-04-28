@@ -121,7 +121,18 @@ interface PrefeituraConfig {
   acsPrefix: string;
 }
 
-const PREFEITURAS: PrefeituraConfig[] = [
+interface BBox {
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+}
+
+interface PrefeituraConfigGeo extends PrefeituraConfig {
+  bbox: BBox;
+}
+
+const PREFEITURAS: PrefeituraConfigGeo[] = [
   {
     ibgeCode: "3509601",
     nome: "Campo Limpo Paulista",
@@ -129,6 +140,7 @@ const PREFEITURAS: PrefeituraConfig[] = [
     bairros: BAIRROS_CL,
     coordEmail: "coord.cl@saudeterritorio.dev",
     acsPrefix: "cl",
+    bbox: { minLng: -46.81, minLat: -23.24, maxLng: -46.76, maxLat: -23.18 },
   },
   {
     ibgeCode: "3556404",
@@ -137,8 +149,39 @@ const PREFEITURAS: PrefeituraConfig[] = [
     bairros: BAIRROS_VP,
     coordEmail: "coord.vp@saudeterritorio.dev",
     acsPrefix: "vp",
+    bbox: { minLng: -46.85, minLat: -23.24, maxLng: -46.81, maxLat: -23.19 },
   },
 ];
+
+function bboxPolygonWKT(b: BBox): string {
+  return `POLYGON((${b.minLng} ${b.minLat}, ${b.maxLng} ${b.minLat}, ${b.maxLng} ${b.maxLat}, ${b.minLng} ${b.maxLat}, ${b.minLng} ${b.minLat}))`;
+}
+
+function bboxMultiPolygonWKT(b: BBox): string {
+  return `MULTIPOLYGON(((${b.minLng} ${b.minLat}, ${b.maxLng} ${b.minLat}, ${b.maxLng} ${b.maxLat}, ${b.minLng} ${b.maxLat}, ${b.minLng} ${b.minLat})))`;
+}
+
+function pointWKT(lng: number, lat: number): string {
+  return `POINT(${lng} ${lat})`;
+}
+
+function randomPointInBBox(b: BBox): { lng: number; lat: number } {
+  return {
+    lng: b.minLng + Math.random() * (b.maxLng - b.minLng),
+    lat: b.minLat + Math.random() * (b.maxLat - b.minLat),
+  };
+}
+
+function gridCell(parent: BBox, cols: number, rows: number, col: number, row: number): BBox {
+  const w = (parent.maxLng - parent.minLng) / cols;
+  const h = (parent.maxLat - parent.minLat) / rows;
+  return {
+    minLng: parent.minLng + col * w,
+    minLat: parent.minLat + row * h,
+    maxLng: parent.minLng + (col + 1) * w,
+    maxLat: parent.minLat + (row + 1) * h,
+  };
+}
 
 async function main() {
   console.log("Seeding database...");
@@ -172,6 +215,11 @@ async function main() {
         uf: cfg.uf,
       },
     });
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Prefeitura" SET geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
+      bboxMultiPolygonWKT(cfg.bbox),
+      prefeitura.id,
+    );
 
     // 3. COORD_MUNICIPAL
     const coord = await prisma.usuario.upsert({
@@ -200,6 +248,16 @@ async function main() {
           endereco: `${randomItem(LOGRADOUROS)}, ${randomInt(100, 999)} - ${randomItem(cfg.bairros)}`,
         },
       });
+      const ubsCell = gridCell(cfg.bbox, 2, 1, u - 1, 0);
+      const ubsCenter = {
+        lng: (ubsCell.minLng + ubsCell.maxLng) / 2,
+        lat: (ubsCell.minLat + ubsCell.maxLat) / 2,
+      };
+      await prisma.$executeRawUnsafe(
+        `UPDATE "UBS" SET geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
+        pointWKT(ubsCenter.lng, ubsCenter.lat),
+        ubs.id,
+      );
       ubsList.push(ubs);
 
       // GERENTE_UBS
@@ -270,13 +328,18 @@ async function main() {
       console.log(`    ACS: ${acsEmail}`);
     }
 
-    // 7. Microareas (2 per equipe = 8 per prefeitura)
-    const allMicroareas = [];
+    // 7. Microareas (2 per equipe = 8 per prefeitura) — grid 4 cols x 2 rows
+    const allMicroareas: { id: string; bbox: BBox }[] = [];
+    let microIdx = 0;
     for (let i = 0; i < allEquipes.length; i++) {
       const equipe = allEquipes[i];
       const acs = allAcs[i];
       for (let m = 1; m <= 2; m++) {
         const codigo = `${(i * 2 + m).toString().padStart(3, "0")}`;
+        const col = microIdx % 4;
+        const row = Math.floor(microIdx / 4);
+        const cell = gridCell(cfg.bbox, 4, 2, col, row);
+
         const micro = await prisma.microarea.upsert({
           where: { equipeId_codigo: { equipeId: equipe.id, codigo } },
           update: {},
@@ -288,10 +351,16 @@ async function main() {
             validada: true,
           },
         });
-        allMicroareas.push(micro);
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Microarea" SET geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
+          bboxPolygonWKT(cell),
+          micro.id,
+        );
+        allMicroareas.push({ id: micro.id, bbox: cell });
+        microIdx++;
       }
     }
-    console.log(`    ${allMicroareas.length} microareas`);
+    console.log(`    ${allMicroareas.length} microareas com geometria`);
 
     // 8. Domicilios (~500 per prefeitura) + Moradores
     const domicilioIds: string[] = [];
@@ -329,6 +398,12 @@ async function main() {
             ultimaVisita,
           },
         });
+        const pt = randomPointInBBox(micro.bbox);
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Domicilio" SET geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
+          pointWKT(pt.lng, pt.lat),
+          domicilio.id,
+        );
         domicilioIds.push(domicilio.id);
 
         // Create moradores

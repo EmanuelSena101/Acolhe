@@ -1,7 +1,24 @@
 import { z } from "zod";
-import { type Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
+import { rowsToFeatureCollection } from "@/lib/geo";
+
+const STATUS_COLOR_EM_DIA = "#2ECC71";
+const STATUS_COLOR_PROXIMO = "#F39C12";
+const STATUS_COLOR_ATRASADO = "#E74C3C";
+
+function statusFromUltimaVisita(ultimaVisita: Date | null): {
+  status: "em_dia" | "proximo_prazo" | "atrasado";
+  color: string;
+} {
+  if (!ultimaVisita) return { status: "atrasado", color: STATUS_COLOR_ATRASADO };
+  const diff = Date.now() - ultimaVisita.getTime();
+  const dias = diff / (1000 * 60 * 60 * 24);
+  if (dias <= 30) return { status: "em_dia", color: STATUS_COLOR_EM_DIA };
+  if (dias <= 60) return { status: "proximo_prazo", color: STATUS_COLOR_PROXIMO };
+  return { status: "atrasado", color: STATUS_COLOR_ATRASADO };
+}
 
 export const domicilioRouter = createTRPCRouter({
   list: protectedProcedure
@@ -43,6 +60,79 @@ export const domicilioRouter = createTRPCRouter({
       ]);
 
       return { items, total, pages: Math.ceil(total / input.perPage) };
+    }),
+
+  listGeoJSON: protectedProcedure
+    .input(
+      z.object({
+        prefeituraId: z.string().optional(),
+        microareaId: z.string().optional(),
+        equipeId: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const microareaFilter = input.microareaId
+        ? Prisma.sql`AND d."microareaId" = ${input.microareaId}`
+        : Prisma.empty;
+      const equipeFilter = input.equipeId
+        ? Prisma.sql`AND m."equipeId" = ${input.equipeId}`
+        : Prisma.empty;
+      const prefeituraFilter = input.prefeituraId
+        ? Prisma.sql`AND u."prefeituraId" = ${input.prefeituraId}`
+        : Prisma.empty;
+
+      type Row = {
+        id: string;
+        logradouro: string;
+        numero: string;
+        bairro: string;
+        microareaId: string;
+        microareaCodigo: string;
+        equipeCor: string;
+        totalMoradores: bigint;
+        ultimaVisita: Date | null;
+        geojson: string | null;
+      };
+      const rows = await db.$queryRaw<Row[]>(
+        Prisma.sql`
+          SELECT
+            d.id,
+            d.logradouro,
+            d.numero,
+            d.bairro,
+            d."microareaId",
+            m.codigo AS "microareaCodigo",
+            e.cor AS "equipeCor",
+            (SELECT COUNT(*) FROM "Morador" mor WHERE mor."domicilioId" = d.id AND mor.ativo) AS "totalMoradores",
+            d."ultimaVisita",
+            ST_AsGeoJSON(d.geom) AS geojson
+          FROM "Domicilio" d
+          JOIN "Microarea" m ON m.id = d."microareaId"
+          JOIN "EquipeESF" e ON e.id = m."equipeId"
+          JOIN "UBS" u ON u.id = e."ubsId"
+          WHERE d.geom IS NOT NULL
+          ${microareaFilter}
+          ${equipeFilter}
+          ${prefeituraFilter}
+        `,
+      );
+
+      return rowsToFeatureCollection<Row>(rows, (r) => {
+        const { status, color } = statusFromUltimaVisita(r.ultimaVisita);
+        return {
+          id: r.id,
+          logradouro: r.logradouro,
+          numero: r.numero,
+          bairro: r.bairro,
+          microareaId: r.microareaId,
+          microareaCodigo: r.microareaCodigo,
+          equipeCor: r.equipeCor,
+          moradores: Number(r.totalMoradores),
+          ultimaVisita: r.ultimaVisita ? r.ultimaVisita.toISOString().slice(0, 10) : null,
+          status,
+          statusColor: color,
+        };
+      });
     }),
 
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {

@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 import { validarPNAB } from "@/server/services/pnab-validator";
+import { rowsToFeatureCollection } from "@/lib/geo";
 
 export const microareaRouter = createTRPCRouter({
   list: protectedProcedure
@@ -29,6 +31,65 @@ export const microareaRouter = createTRPCRouter({
           _count: { select: { domicilios: true } },
         },
       });
+    }),
+
+  listGeoJSON: protectedProcedure
+    .input(
+      z.object({
+        prefeituraId: z.string().optional(),
+        equipeId: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const equipeFilter = input.equipeId
+        ? Prisma.sql`AND m."equipeId" = ${input.equipeId}`
+        : Prisma.empty;
+      const prefeituraFilter = input.prefeituraId
+        ? Prisma.sql`AND u."prefeituraId" = ${input.prefeituraId}`
+        : Prisma.empty;
+
+      type Row = {
+        id: string;
+        codigo: string;
+        cor: string;
+        equipeNome: string;
+        acsNome: string | null;
+        populacaoEstimada: number;
+        totalDomicilios: bigint;
+        geojson: string | null;
+      };
+      const rows = await db.$queryRaw<Row[]>(
+        Prisma.sql`
+          SELECT
+            m.id,
+            m.codigo,
+            e.cor AS cor,
+            e.nome AS "equipeNome",
+            usr.nome AS "acsNome",
+            m."populacaoEstimada",
+            (SELECT COUNT(*) FROM "Domicilio" d WHERE d."microareaId" = m.id) AS "totalDomicilios",
+            ST_AsGeoJSON(m.geom) AS geojson
+          FROM "Microarea" m
+          JOIN "EquipeESF" e ON e.id = m."equipeId"
+          JOIN "UBS" u ON u.id = e."ubsId"
+          LEFT JOIN "ACS" a ON a.id = m."acsId"
+          LEFT JOIN "Usuario" usr ON usr.id = a."usuarioId"
+          WHERE m.geom IS NOT NULL
+          ${equipeFilter}
+          ${prefeituraFilter}
+          ORDER BY m.codigo ASC
+        `,
+      );
+
+      return rowsToFeatureCollection<Row>(rows, (r) => ({
+        id: r.id,
+        codigo: r.codigo,
+        cor: r.cor,
+        equipeNome: r.equipeNome,
+        acsNome: r.acsNome,
+        populacaoEstimada: r.populacaoEstimada,
+        totalDomicilios: Number(r.totalDomicilios),
+      }));
     }),
 
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
