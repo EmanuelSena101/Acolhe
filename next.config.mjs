@@ -3,6 +3,7 @@ const nextConfig = {
   output: "standalone",
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "bcryptjs"],
+    instrumentationHook: true,
   },
   images: {
     remotePatterns: [
