@@ -210,6 +210,7 @@ export default function DashboardPage() {
         </div>
         <div className="h-[480px] w-full">
           <MapView
+            key={prefeituraId ?? "none"}
             microareas={microareasGeoJSON}
             domicilios={domiciliosGeoJSON}
             ubs={ubsGeoJSON}

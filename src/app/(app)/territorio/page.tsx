@@ -89,7 +89,10 @@ export default function TerritorioPage() {
         {prefeituras && prefeituras.length > 1 && (
           <select
             value={prefeituraId ?? ""}
-            onChange={(e) => setSelectedPrefeituraId(e.target.value)}
+            onChange={(e) => {
+              setSelectedPrefeituraId(e.target.value);
+              setSelectedMicroareaId(null);
+            }}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           >
             {prefeituras.map((p) => (
@@ -131,6 +134,7 @@ export default function TerritorioPage() {
         {/* Map */}
         <div className="relative flex-1 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
           <MapView
+            key={prefeituraId ?? "none"}
             microareas={microareasGeoJSON}
             domicilios={domiciliosGeoJSON}
             ubs={ubsGeoJSON}
