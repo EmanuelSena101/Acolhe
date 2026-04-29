@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { MapView } from "@/components/map/map-view";
 import { trpc } from "@/lib/trpc";
 import { X, Map as MapIcon, Users } from "lucide-react";
@@ -8,9 +9,20 @@ import { X, Map as MapIcon, Users } from "lucide-react";
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 export default function TerritorioPage() {
+  const searchParams = useSearchParams();
   const [selectedPrefeituraId, setSelectedPrefeituraId] = useState<string | null>(null);
   const [selectedEquipeId, setSelectedEquipeId] = useState<string>("all");
-  const [selectedMicroareaId, setSelectedMicroareaId] = useState<string | null>(null);
+  const [selectedMicroareaId, setSelectedMicroareaId] = useState<string | null>(() =>
+    searchParams.get("microareaId"),
+  );
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("microareaId");
+    if (fromUrl) {
+      setSelectedMicroareaId(fromUrl);
+      setSelectedEquipeId("all");
+    }
+  }, [searchParams]);
 
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
   const prefeituraId = selectedPrefeituraId ?? prefeituras?.[0]?.id ?? null;
@@ -71,8 +83,7 @@ export default function TerritorioPage() {
     [ubsFC],
   );
   const prefeituraGeoJSON = useMemo(
-    () =>
-      (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    () => (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
     [prefeituraGeo],
   );
   const bounds = prefeituraGeo?.bounds ?? null;
@@ -216,9 +227,7 @@ export default function TerritorioPage() {
             ubs={ubsGeoJSON}
             municipio={prefeituraGeoJSON}
             bounds={bounds}
-            onMicroareaClick={(id) =>
-              setSelectedMicroareaId((curr) => (curr === id ? null : id))
-            }
+            onMicroareaClick={(id) => setSelectedMicroareaId((curr) => (curr === id ? null : id))}
           />
         </div>
 
@@ -294,17 +303,11 @@ export default function TerritorioPage() {
                 return (
                   <button
                     key={m.id}
-                    onClick={() =>
-                      setSelectedMicroareaId(isSelected ? null : m.id)
-                    }
+                    onClick={() => setSelectedMicroareaId(isSelected ? null : m.id)}
                     className="flex items-center gap-2 rounded-md p-2 text-left transition-colors"
                     style={{
-                      backgroundColor: isSelected
-                        ? "var(--acolhe-primary-light)"
-                        : "transparent",
-                      border: `1px solid ${
-                        isSelected ? "var(--acolhe-primary)" : "transparent"
-                      }`,
+                      backgroundColor: isSelected ? "var(--acolhe-primary-light)" : "transparent",
+                      border: `1px solid ${isSelected ? "var(--acolhe-primary)" : "transparent"}`,
                     }}
                     onMouseEnter={(e) => {
                       if (!isSelected) {
@@ -324,9 +327,7 @@ export default function TerritorioPage() {
                     <span
                       className="flex-1 text-sm"
                       style={{
-                        color: isSelected
-                          ? "var(--acolhe-primary)"
-                          : "var(--acolhe-fg)",
+                        color: isSelected ? "var(--acolhe-primary)" : "var(--acolhe-fg)",
                         fontWeight: isSelected ? 600 : 400,
                       }}
                     >
@@ -390,10 +391,7 @@ export default function TerritorioPage() {
               label="Populacao estimada"
               value={String(selectedMicroarea.populacaoEstimada)}
             />
-            <DrawerField
-              label="Domicilios"
-              value={String(selectedMicroarea.domicilios.length)}
-            />
+            <DrawerField label="Domicilios" value={String(selectedMicroarea.domicilios.length)} />
 
             <div>
               <h4
@@ -424,10 +422,7 @@ export default function TerritorioPage() {
                   </li>
                 ))}
                 {selectedMicroarea.domicilios.length > 20 && (
-                  <li
-                    className="px-2 py-1 text-xs"
-                    style={{ color: "var(--acolhe-muted-fg)" }}
-                  >
+                  <li className="px-2 py-1 text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
                     ... e mais {selectedMicroarea.domicilios.length - 20}
                   </li>
                 )}
@@ -442,14 +437,8 @@ export default function TerritorioPage() {
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span
-      className="flex items-center gap-1.5"
-      style={{ color: "var(--acolhe-muted-fg)" }}
-    >
-      <span
-        className="inline-block h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+    <span className="flex items-center gap-1.5" style={{ color: "var(--acolhe-muted-fg)" }}>
+      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
   );

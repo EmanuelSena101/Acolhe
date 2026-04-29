@@ -3,16 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
-import {
-  MapPin,
-  Plus,
-  AlertCircle,
-  Edit,
-  Map as MapIcon,
-  ListTodo,
-  X,
-  Trash2,
-} from "lucide-react";
+import { MapPin, Plus, AlertCircle, Edit, Map as MapIcon, ListTodo, X, Trash2 } from "lucide-react";
 
 const STATUS_PNAB = {
   valida: { label: "Valida", color: "var(--acolhe-success)", bg: "var(--acolhe-success-light)" },
@@ -64,41 +55,27 @@ export default function MicroareasPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg"
-            style={{ backgroundColor: "var(--acolhe-primary-light)" }}
-          >
-            <MapPin size={20} style={{ color: "var(--acolhe-primary)" }} />
-          </div>
-          <div>
-            <h1
-              className="text-2xl font-bold leading-tight"
-              style={{
-                fontFamily: "var(--font-plus-jakarta), sans-serif",
-                color: "var(--acolhe-fg)",
-              }}
-            >
-              Microareas
-            </h1>
-            <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
-              Configuracao e validacao da divisao territorial (PNAB)
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{
-            backgroundColor: "var(--acolhe-primary)",
-            boxShadow: "var(--acolhe-shadow-sm)",
-          }}
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--acolhe-primary-light)" }}
         >
-          <Plus size={16} />
-          Nova microarea
-        </button>
+          <MapPin size={20} style={{ color: "var(--acolhe-primary)" }} />
+        </div>
+        <div>
+          <h1
+            className="text-2xl font-bold leading-tight"
+            style={{
+              fontFamily: "var(--font-plus-jakarta), sans-serif",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            Microareas
+          </h1>
+          <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+            Configuracao e validacao da divisao territorial (PNAB)
+          </p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -153,11 +130,7 @@ export default function MicroareasPage() {
         </button>
 
         {microareas?.map((m) => (
-          <MicroareaCard
-            key={m.id}
-            microarea={m}
-            onDelete={() => handleDelete(m.id, m.codigo)}
-          />
+          <MicroareaCard key={m.id} microarea={m} onDelete={() => handleDelete(m.id, m.codigo)} />
         ))}
       </div>
 
@@ -269,10 +242,7 @@ function MicroareaCard({ microarea: m, onDelete }: MicroareaCardProps) {
             {acsAvatar}
           </div>
           <div className="min-w-0 flex-1">
-            <p
-              className="truncate text-sm font-semibold"
-              style={{ color: "var(--acolhe-fg)" }}
-            >
+            <p className="truncate text-sm font-semibold" style={{ color: "var(--acolhe-fg)" }}>
               {m.acs?.nome ?? "Sem ACS atribuido"}
             </p>
             {!m.acs && (
@@ -537,9 +507,7 @@ function CreateModal({ equipes, onClose, onCreated }: CreateModalProps) {
             Cancelar
           </button>
           <button
-            onClick={() =>
-              createMutation.mutate({ equipeId, codigo: codigo.trim() })
-            }
+            onClick={() => createMutation.mutate({ equipeId, codigo: codigo.trim() })}
             disabled={!canSubmit || createMutation.isPending}
             className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
             style={{ backgroundColor: "var(--acolhe-primary)" }}

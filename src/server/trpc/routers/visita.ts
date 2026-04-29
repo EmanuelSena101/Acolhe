@@ -245,6 +245,8 @@ export const visitaRouter = createTRPCRouter({
         motivoRecusa: z.string().max(500).optional(),
         observacoes: z.string().max(2000).optional(),
         duracaoMin: z.number().int().min(1).max(480).optional(),
+        latCheckin: z.number().min(-90).max(90).optional(),
+        lngCheckin: z.number().min(-180).max(180).optional(),
       }),
     )
     .mutation(async ({ input }) => {
