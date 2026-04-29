@@ -10,9 +10,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--acolhe-bg)" }}>
       <Sidebar />
-      <main className="lg:pl-64">
+      <main className="lg:pl-60">
         <div className="p-4 lg:p-8">{children}</div>
       </main>
     </div>
