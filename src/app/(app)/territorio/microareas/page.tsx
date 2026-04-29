@@ -1,311 +1,573 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, CheckCircle, Plus, Trash2, UserPlus } from "lucide-react";
+import {
+  MapPin,
+  Plus,
+  AlertCircle,
+  Edit,
+  Map as MapIcon,
+  ListTodo,
+  X,
+  Trash2,
+} from "lucide-react";
+
+const STATUS_PNAB = {
+  valida: { label: "Valida", color: "var(--acolhe-success)", bg: "var(--acolhe-success-light)" },
+  atencao: { label: "Atencao", color: "var(--acolhe-warning)", bg: "var(--acolhe-warning-light)" },
+  critica: { label: "Critica", color: "var(--acolhe-danger)", bg: "var(--acolhe-danger-light)" },
+} as const;
 
 export default function MicroareasPage() {
-  const [selectedEquipeId, setSelectedEquipeId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newCodigo, setNewCodigo] = useState("");
-  const [assigningMicroareaId, setAssigningMicroareaId] = useState<string | null>(null);
-  const [selectedAcsId, setSelectedAcsId] = useState<string>("");
-  const [validatingId, setValidatingId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [ubsFilter, setUbsFilter] = useState<string>("all");
+  const [equipeFilter, setEquipeFilter] = useState<string>("all");
 
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
-  const [selectedPrefeituraId, setSelectedPrefeituraId] = useState<string | null>(null);
-  const prefeituraId = selectedPrefeituraId ?? prefeituras?.[0]?.id ?? null;
+  const prefeituraId = prefeituras?.[0]?.id;
 
   const { data: ubsList } = trpc.ubs.list.useQuery(
     { prefeituraId: prefeituraId! },
     { enabled: !!prefeituraId },
   );
 
-  const { data: equipes } = trpc.equipe.list.useQuery(
-    { ubsId: ubsList?.[0]?.id ?? "" },
-    { enabled: !!ubsList?.length },
+  const { data: equipes } = trpc.equipe.listByPrefeitura.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
   );
 
-  const { data: microareas } = trpc.microarea.list.useQuery({
-    equipeId: selectedEquipeId ?? undefined,
-  });
-
-  const { data: acsList } = trpc.acs.list.useQuery(
-    { equipeId: selectedEquipeId ?? undefined },
-    { enabled: !!selectedEquipeId },
-  );
-
-  const { data: validation } = trpc.microarea.validate.useQuery(
-    { id: validatingId! },
-    { enabled: !!validatingId },
+  const { data: microareas, refetch } = trpc.microarea.listForGestao.useQuery(
+    {
+      prefeituraId: prefeituraId!,
+      ubsId: ubsFilter === "all" ? undefined : ubsFilter,
+      equipeId: equipeFilter === "all" ? undefined : equipeFilter,
+    },
+    { enabled: !!prefeituraId },
   );
 
   const utils = trpc.useUtils();
 
-  const createMutation = trpc.microarea.create.useMutation({
-    onSuccess: () => {
-      setShowCreateForm(false);
-      setNewCodigo("");
-      void utils.microarea.list.invalidate();
-    },
-  });
-
-  const assignMutation = trpc.microarea.assignAcs.useMutation({
-    onSuccess: () => {
-      setAssigningMicroareaId(null);
-      setSelectedAcsId("");
-      void utils.microarea.list.invalidate();
-    },
-  });
-
   const deleteMutation = trpc.microarea.delete.useMutation({
     onSuccess: () => {
-      void utils.microarea.list.invalidate();
+      void utils.microarea.listForGestao.invalidate();
     },
   });
 
-  const handleCreate = () => {
-    if (!selectedEquipeId || !newCodigo.trim()) return;
-    createMutation.mutate({ equipeId: selectedEquipeId, codigo: newCodigo.trim() });
-  };
-
-  const handleAssign = () => {
-    if (!assigningMicroareaId) return;
-    assignMutation.mutate({
-      id: assigningMicroareaId,
-      acsId: selectedAcsId || null,
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta microarea?")) {
+  function handleDelete(id: string, codigo: string) {
+    if (confirm(`Excluir microarea ${codigo}?`)) {
       deleteMutation.mutate({ id });
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Microareas</h1>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--acolhe-primary-light)" }}
+          >
+            <MapPin size={20} style={{ color: "var(--acolhe-primary)" }} />
+          </div>
+          <div>
+            <h1
+              className="text-2xl font-bold leading-tight"
+              style={{
+                fontFamily: "var(--font-plus-jakarta), sans-serif",
+                color: "var(--acolhe-fg)",
+              }}
+            >
+              Microareas
+            </h1>
+            <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+              Configuracao e validacao da divisao territorial (PNAB)
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+          style={{
+            backgroundColor: "var(--acolhe-primary)",
+            boxShadow: "var(--acolhe-shadow-sm)",
+          }}
+        >
+          <Plus size={16} />
+          Nova microarea
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        {prefeituras && prefeituras.length > 1 && (
-          <select
-            value={prefeituraId ?? ""}
-            onChange={(e) => setSelectedPrefeituraId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          >
-            {prefeituras.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <select
-          value={selectedEquipeId ?? ""}
-          onChange={(e) => setSelectedEquipeId(e.target.value || null)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Todas as equipes</option>
-          {equipes?.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nome}
+      <div className="flex flex-wrap items-center gap-3">
+        <FilterSelect value={ubsFilter} onChange={setUbsFilter}>
+          <option value="all">Todas as UBS</option>
+          {ubsList?.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.nome}
             </option>
           ))}
-        </select>
+        </FilterSelect>
 
-        {selectedEquipeId && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            Nova microarea
-          </button>
-        )}
+        <FilterSelect value={equipeFilter} onChange={setEquipeFilter}>
+          <option value="all">Todas as equipes</option>
+          {equipes
+            ?.filter((eq) => ubsFilter === "all" || eq.ubs.id === ubsFilter)
+            .map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.nome}
+              </option>
+            ))}
+        </FilterSelect>
       </div>
 
-      {/* Create form */}
-      {showCreateForm && selectedEquipeId && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-blue-900">Nova microarea</h3>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={newCodigo}
-              onChange={(e) => setNewCodigo(e.target.value)}
-              placeholder="Codigo (ex: MA-01)"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              maxLength={10}
-            />
-            <button
-              onClick={handleCreate}
-              disabled={createMutation.isPending || !newCodigo.trim()}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {createMutation.isPending ? "Criando..." : "Criar"}
-            </button>
-            <button
-              onClick={() => {
-                setShowCreateForm(false);
-                setNewCodigo("");
-              }}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              Cancelar
-            </button>
+      {/* Grid */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex flex-col items-center justify-center gap-3 rounded-xl py-12 transition-all hover:bg-[var(--acolhe-muted)]"
+          style={{
+            border: "2px dashed var(--acolhe-border)",
+            backgroundColor: "transparent",
+            minHeight: 280,
+          }}
+        >
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--acolhe-primary-light)" }}
+          >
+            <Plus size={20} style={{ color: "var(--acolhe-primary)" }} />
           </div>
-          {createMutation.error && (
-            <p className="mt-2 text-sm text-red-600">{createMutation.error.message}</p>
-          )}
+          <p
+            className="text-sm font-semibold"
+            style={{
+              fontFamily: "var(--font-plus-jakarta), sans-serif",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            Adicionar microarea
+          </p>
+        </button>
+
+        {microareas?.map((m) => (
+          <MicroareaCard
+            key={m.id}
+            microarea={m}
+            onDelete={() => handleDelete(m.id, m.codigo)}
+          />
+        ))}
+      </div>
+
+      {!microareas && (
+        <p className="text-center text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+          Carregando...
+        </p>
+      )}
+
+      {microareas && microareas.length === 0 && (
+        <p className="text-center text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+          Nenhuma microarea encontrada com os filtros atuais
+        </p>
+      )}
+
+      {/* Create modal */}
+      {showCreate && (
+        <CreateModal
+          equipes={equipes ?? []}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false);
+            void refetch();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface MicroareaForGestao {
+  id: string;
+  codigo: string;
+  populacaoEstimada: number;
+  validada: boolean;
+  equipe: { id: string; nome: string; cor: string };
+  ubs: { id: string; nome: string };
+  acs: { id: string; nome: string } | null;
+  totalDomicilios: number;
+  domiciliosVisitados: number;
+  cobertura: number;
+  statusPNAB: "valida" | "atencao" | "critica";
+  excedePNAB: boolean;
+}
+
+interface EquipeOption {
+  id: string;
+  nome: string;
+  cor: string;
+  ubs: { id: string; nome: string };
+}
+
+interface MicroareaCardProps {
+  microarea: MicroareaForGestao;
+  onDelete: () => void;
+}
+
+function MicroareaCard({ microarea: m, onDelete }: MicroareaCardProps) {
+  const statusConfig = STATUS_PNAB[m.statusPNAB];
+  const acsAvatar = m.acs?.nome ? getInitials(m.acs.nome) : "—";
+
+  return (
+    <div
+      className="group overflow-hidden rounded-xl transition-all hover:shadow-md"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        borderLeft: `4px solid ${m.equipe.cor}`,
+        boxShadow: "var(--acolhe-shadow-sm)",
+      }}
+    >
+      {m.excedePNAB && (
+        <div
+          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold"
+          style={{
+            backgroundColor: "var(--acolhe-danger-light)",
+            color: "var(--acolhe-danger)",
+          }}
+        >
+          <AlertCircle size={14} />
+          Populacao excede 750 — divida em 2 microareas
         </div>
       )}
 
-      {/* Microareas list */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Codigo
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Equipe
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                ACS
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Domicilios
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Populacao est.
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                PNAB
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Acoes
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {microareas?.map((m) => (
-              <tr key={m.id} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="inline-block h-3 w-3 rounded"
-                      style={{ backgroundColor: m.equipe.cor }}
-                    />
-                    {m.codigo}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {m.equipe.nome}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {assigningMicroareaId === m.id ? (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedAcsId}
-                        onChange={(e) => setSelectedAcsId(e.target.value)}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
-                      >
-                        <option value="">Nenhum</option>
-                        {acsList?.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.usuario.nome}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={handleAssign}
-                        disabled={assignMutation.isPending}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        Salvar
-                      </button>
-                      <button
-                        onClick={() => setAssigningMicroareaId(null)}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        X
-                      </button>
-                    </div>
-                  ) : (
-                    <span>
-                      {m.acs?.usuario.nome ?? <span className="text-gray-400">Sem ACS</span>}
-                    </span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {m._count.domicilios}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {m._count.domicilios * 3}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  {validatingId === m.id && validation ? (
-                    validation.valida ? (
-                      <span className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        Valida
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-amber-600">
-                        <AlertTriangle className="h-4 w-4" />
-                        {validation.erros.join(", ")}
-                      </span>
-                    )
-                  ) : (
-                    <button
-                      onClick={() => setValidatingId(m.id)}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      Validar
-                    </button>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setAssigningMicroareaId(m.id);
-                        setSelectedAcsId(m.acs?.id ?? "");
-                      }}
-                      className="text-gray-400 hover:text-blue-600"
-                      title="Atribuir ACS"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(m.id)}
-                      className="text-gray-400 hover:text-red-600"
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {(!microareas || microareas.length === 0) && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {selectedEquipeId
-                    ? "Nenhuma microarea encontrada para esta equipe."
-                    : "Selecione uma equipe para ver as microareas."}
-                </td>
-              </tr>
+      <div className="space-y-4 p-5">
+        <div className="flex items-start justify-between">
+          <p
+            className="text-2xl font-bold leading-none"
+            style={{
+              fontFamily: "var(--font-plus-jakarta), sans-serif",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            {m.codigo}
+          </p>
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-semibold"
+            style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
+          >
+            {statusConfig.label}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white"
+            style={{ backgroundColor: m.equipe.cor }}
+          >
+            {acsAvatar}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p
+              className="truncate text-sm font-semibold"
+              style={{ color: "var(--acolhe-fg)" }}
+            >
+              {m.acs?.nome ?? "Sem ACS atribuido"}
+            </p>
+            {!m.acs && (
+              <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                Atribua um ACS
+              </p>
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <span
+            className="rounded-full px-2 py-1 text-xs font-semibold"
+            style={{
+              backgroundColor: "var(--acolhe-primary-light)",
+              color: "var(--acolhe-primary)",
+            }}
+          >
+            {m.equipe.nome}
+          </span>
+          <span
+            className="rounded-full px-2 py-1 text-xs"
+            style={{
+              backgroundColor: "var(--acolhe-muted)",
+              color: "var(--acolhe-muted-fg)",
+            }}
+          >
+            {m.ubs.nome}
+          </span>
+        </div>
+
+        <div
+          className="grid grid-cols-3 gap-2 pt-3"
+          style={{ borderTop: "1px solid var(--acolhe-border)" }}
+        >
+          <Metric value={m.totalDomicilios} label="Domicilios" />
+          <Metric value={m.populacaoEstimada} label="Populacao" />
+          <Metric value={`${m.cobertura}%`} label="Cobertura" />
+        </div>
+
+        <div
+          className="h-2 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: "var(--acolhe-muted)" }}
+        >
+          <div
+            className="h-full transition-all"
+            style={{
+              width: `${Math.min(m.cobertura, 100)}%`,
+              backgroundColor: "var(--acolhe-success)",
+            }}
+          />
+        </div>
+
+        <div
+          className="flex gap-2 pt-3 opacity-60 transition-opacity group-hover:opacity-100"
+          style={{ borderTop: "1px solid var(--acolhe-border)" }}
+        >
+          <Link
+            href={`/territorio?microareaId=${m.id}`}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition-colors"
+            style={{
+              backgroundColor: "var(--acolhe-card)",
+              border: "1px solid var(--acolhe-border)",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            <MapIcon size={12} />
+            Mapa
+          </Link>
+          <Link
+            href={`/domicilios?microareaId=${m.id}`}
+            className="flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition-colors"
+            style={{
+              backgroundColor: "var(--acolhe-card)",
+              border: "1px solid var(--acolhe-border)",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            <ListTodo size={12} />
+            Lista
+          </Link>
+          <button
+            onClick={onDelete}
+            className="flex items-center justify-center rounded-md p-1.5 transition-colors"
+            style={{
+              backgroundColor: "var(--acolhe-card)",
+              border: "1px solid var(--acolhe-border)",
+              color: "var(--acolhe-muted-fg)",
+            }}
+            title="Excluir microarea"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--acolhe-danger)";
+              e.currentTarget.style.borderColor = "var(--acolhe-danger)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--acolhe-muted-fg)";
+              e.currentTarget.style.borderColor = "var(--acolhe-border)";
+            }}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
       </div>
     </div>
   );
+}
+
+function Metric({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div>
+      <p
+        className="text-xl font-bold leading-none"
+        style={{
+          fontFamily: "var(--font-plus-jakarta), sans-serif",
+          color: "var(--acolhe-fg)",
+        }}
+      >
+        {value}
+      </p>
+      <p className="mt-0.5 text-[10px]" style={{ color: "var(--acolhe-muted-fg)" }}>
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (_v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-9 rounded-lg px-3 text-sm outline-none"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        color: "var(--acolhe-fg)",
+      }}
+    >
+      {children}
+    </select>
+  );
+}
+
+interface CreateModalProps {
+  equipes: EquipeOption[];
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function CreateModal({ equipes, onClose, onCreated }: CreateModalProps) {
+  const [codigo, setCodigo] = useState("");
+  const [equipeId, setEquipeId] = useState("");
+
+  const createMutation = trpc.microarea.create.useMutation({
+    onSuccess: onCreated,
+  });
+
+  const canSubmit = codigo.trim().length > 0 && equipeId !== "";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(28,26,23,0.5)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl p-6"
+        style={{
+          backgroundColor: "var(--acolhe-card)",
+          border: "1px solid var(--acolhe-border)",
+          boxShadow: "var(--acolhe-shadow-lg)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2
+            className="text-xl font-bold"
+            style={{
+              fontFamily: "var(--font-plus-jakarta), sans-serif",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            Nova microarea
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1"
+            style={{ color: "var(--acolhe-muted-fg)" }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <Field label="Codigo">
+            <input
+              type="text"
+              placeholder="Ex: MA-05"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              maxLength={10}
+              className="h-10 w-full rounded-lg px-3 text-sm outline-none"
+              style={{
+                border: "1px solid var(--acolhe-border)",
+                backgroundColor: "var(--acolhe-card)",
+                color: "var(--acolhe-fg)",
+              }}
+            />
+          </Field>
+
+          <Field label="Equipe ESF">
+            <select
+              value={equipeId}
+              onChange={(e) => setEquipeId(e.target.value)}
+              className="h-10 w-full rounded-lg px-3 text-sm outline-none"
+              style={{
+                border: "1px solid var(--acolhe-border)",
+                backgroundColor: "var(--acolhe-card)",
+                color: "var(--acolhe-fg)",
+              }}
+            >
+              <option value="">Selecione...</option>
+              {equipes.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.nome} · {eq.ubs.nome}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          {createMutation.error && (
+            <p
+              className="rounded-md px-3 py-2 text-xs"
+              style={{
+                backgroundColor: "var(--acolhe-danger-light)",
+                color: "var(--acolhe-danger)",
+              }}
+            >
+              {createMutation.error.message}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg py-2 text-sm font-semibold"
+            style={{
+              border: "1px solid var(--acolhe-border)",
+              backgroundColor: "var(--acolhe-card)",
+              color: "var(--acolhe-fg)",
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() =>
+              createMutation.mutate({ equipeId, codigo: codigo.trim() })
+            }
+            disabled={!canSubmit || createMutation.isPending}
+            className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: "var(--acolhe-primary)" }}
+          >
+            {createMutation.isPending ? "Criando..." : "Criar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label
+        className="mb-1.5 block text-xs font-semibold uppercase tracking-wider"
+        style={{ color: "var(--acolhe-muted-fg)" }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }

@@ -92,6 +92,92 @@ export const microareaRouter = createTRPCRouter({
       }));
     }),
 
+  listForGestao: protectedProcedure
+    .input(
+      z.object({
+        prefeituraId: z.string(),
+        ubsId: z.string().optional(),
+        equipeId: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const ubsFilter = input.ubsId
+        ? Prisma.sql`AND u.id = ${input.ubsId}`
+        : Prisma.empty;
+      const equipeFilter = input.equipeId
+        ? Prisma.sql`AND e.id = ${input.equipeId}`
+        : Prisma.empty;
+
+      type Row = {
+        id: string;
+        codigo: string;
+        populacaoEstimada: number;
+        validada: boolean;
+        equipeId: string;
+        equipeNome: string;
+        equipeCor: string;
+        ubsId: string;
+        ubsNome: string;
+        acsId: string | null;
+        acsNome: string | null;
+        totalDomicilios: bigint;
+        domiciliosVisitados: bigint;
+      };
+
+      const rows = await db.$queryRaw<Row[]>(
+        Prisma.sql`
+          SELECT
+            m.id,
+            m.codigo,
+            m."populacaoEstimada",
+            m.validada,
+            e.id AS "equipeId",
+            e.nome AS "equipeNome",
+            e.cor AS "equipeCor",
+            u.id AS "ubsId",
+            u.nome AS "ubsNome",
+            a.id AS "acsId",
+            usr.nome AS "acsNome",
+            (SELECT COUNT(*) FROM "Domicilio" d WHERE d."microareaId" = m.id) AS "totalDomicilios",
+            (SELECT COUNT(*) FROM "Domicilio" d
+              WHERE d."microareaId" = m.id
+                AND d."ultimaVisita" >= NOW() - INTERVAL '30 days') AS "domiciliosVisitados"
+          FROM "Microarea" m
+          JOIN "EquipeESF" e ON e.id = m."equipeId"
+          JOIN "UBS" u ON u.id = e."ubsId"
+          LEFT JOIN "ACS" a ON a.id = m."acsId"
+          LEFT JOIN "Usuario" usr ON usr.id = a."usuarioId"
+          WHERE u."prefeituraId" = ${input.prefeituraId}
+          ${ubsFilter}
+          ${equipeFilter}
+          ORDER BY u.nome ASC, e.nome ASC, m.codigo ASC
+        `,
+      );
+
+      return rows.map((r) => {
+        const total = Number(r.totalDomicilios);
+        const visitados = Number(r.domiciliosVisitados);
+        const cobertura = total > 0 ? Math.round((visitados / total) * 100) : 0;
+        const populacao = r.populacaoEstimada;
+        const statusPNAB =
+          populacao > 750 ? "critica" : populacao > 600 ? "atencao" : "valida";
+        return {
+          id: r.id,
+          codigo: r.codigo,
+          populacaoEstimada: populacao,
+          validada: r.validada,
+          equipe: { id: r.equipeId, nome: r.equipeNome, cor: r.equipeCor },
+          ubs: { id: r.ubsId, nome: r.ubsNome },
+          acs: r.acsId ? { id: r.acsId, nome: r.acsNome ?? "—" } : null,
+          totalDomicilios: total,
+          domiciliosVisitados: visitados,
+          cobertura,
+          statusPNAB: statusPNAB as "valida" | "atencao" | "critica",
+          excedePNAB: populacao > 750,
+        };
+      });
+    }),
+
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
     return db.microarea.findUniqueOrThrow({
       where: { id: input.id },
