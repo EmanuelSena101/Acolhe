@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
+import { Sidebar } from "@/components/sidebar";
 
 export default async function AcsLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -8,18 +9,10 @@ export default async function AcsLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--acolhe-bg)" }}>
-      <div
-        className="mx-auto"
-        style={{
-          maxWidth: 430,
-          minHeight: "100vh",
-          backgroundColor: "var(--acolhe-bg)",
-          borderLeft: "1px solid var(--acolhe-border)",
-          borderRight: "1px solid var(--acolhe-border)",
-        }}
-      >
-        {children}
-      </div>
+      <Sidebar />
+      <main className="lg:pl-60">
+        <div className="mx-auto max-w-2xl">{children}</div>
+      </main>
     </div>
   );
 }

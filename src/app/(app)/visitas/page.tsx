@@ -208,9 +208,9 @@ export default function VisitasPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="space-y-2 lg:space-y-3">
           <div
-            className="flex min-w-64 flex-1 items-center gap-2 rounded-lg px-3 py-2"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2"
             style={{ backgroundColor: "var(--acolhe-muted)" }}
           >
             <Search size={16} style={{ color: "var(--acolhe-muted-fg)" }} />
@@ -226,65 +226,67 @@ export default function VisitasPage() {
             />
           </div>
 
-          <FilterSelect
-            value={periodo}
-            onChange={(v) => {
-              setPeriodo(v as Periodo);
-              setPage(1);
-            }}
-          >
-            <option value="semana">Ultima semana</option>
-            <option value="mes">Este mes</option>
-            <option value="tres_meses">Ultimos 3 meses</option>
-            <option value="all">Todo o periodo</option>
-          </FilterSelect>
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:gap-3">
+            <FilterSelect
+              value={periodo}
+              onChange={(v) => {
+                setPeriodo(v as Periodo);
+                setPage(1);
+              }}
+            >
+              <option value="semana">Ultima semana</option>
+              <option value="mes">Este mes</option>
+              <option value="tres_meses">Ultimos 3 meses</option>
+              <option value="all">Todo o periodo</option>
+            </FilterSelect>
 
-          <FilterSelect
-            value={statusFilter}
-            onChange={(v) => {
-              setStatusFilter(v as StatusVisita | "all");
-              setPage(1);
-            }}
-          >
-            <option value="all">Todos os status</option>
-            <option value="REALIZADA">Realizadas</option>
-            <option value="PENDENTE">Pendentes</option>
-            <option value="ATRASADA">Atrasadas</option>
-            <option value="AUSENTE">Ausentes</option>
-            <option value="RECUSADA">Recusadas</option>
-            <option value="CANCELADA">Canceladas</option>
-          </FilterSelect>
+            <FilterSelect
+              value={statusFilter}
+              onChange={(v) => {
+                setStatusFilter(v as StatusVisita | "all");
+                setPage(1);
+              }}
+            >
+              <option value="all">Todos os status</option>
+              <option value="REALIZADA">Realizadas</option>
+              <option value="PENDENTE">Pendentes</option>
+              <option value="ATRASADA">Atrasadas</option>
+              <option value="AUSENTE">Ausentes</option>
+              <option value="RECUSADA">Recusadas</option>
+              <option value="CANCELADA">Canceladas</option>
+            </FilterSelect>
 
-          <FilterSelect
-            value={equipeId}
-            onChange={(v) => {
-              setEquipeId(v);
-              setMicroareaId("all");
-              setPage(1);
-            }}
-          >
-            <option value="all">Todas as equipes</option>
-            {equipes?.map((eq) => (
-              <option key={eq.id} value={eq.id}>
-                {eq.nome}
-              </option>
-            ))}
-          </FilterSelect>
+            <FilterSelect
+              value={equipeId}
+              onChange={(v) => {
+                setEquipeId(v);
+                setMicroareaId("all");
+                setPage(1);
+              }}
+            >
+              <option value="all">Todas as equipes</option>
+              {equipes?.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.nome}
+                </option>
+              ))}
+            </FilterSelect>
 
-          <FilterSelect
-            value={microareaId}
-            onChange={(v) => {
-              setMicroareaId(v);
-              setPage(1);
-            }}
-          >
-            <option value="all">Todas as microareas</option>
-            {microareas?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.codigo}
-              </option>
-            ))}
-          </FilterSelect>
+            <FilterSelect
+              value={microareaId}
+              onChange={(v) => {
+                setMicroareaId(v);
+                setPage(1);
+              }}
+            >
+              <option value="all">Todas as microareas</option>
+              {microareas?.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.codigo}
+                </option>
+              ))}
+            </FilterSelect>
+          </div>
         </div>
 
         {activeChips.length > 0 && (
@@ -307,7 +309,7 @@ export default function VisitasPage() {
         )}
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <KpiCard
             label="Realizadas"
             value={kpis?.realizadas ?? "—"}
@@ -373,19 +375,25 @@ export default function VisitasPage() {
                     boxShadow: "var(--acolhe-shadow-sm)",
                   }}
                 >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <span
-                        className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-xs"
                         style={{ backgroundColor: config.bg, color: config.color }}
                       >
                         {config.label}
                       </span>
-                      <span className="text-sm font-medium" style={{ color: "var(--acolhe-fg)" }}>
+                      <span
+                        className="text-xs font-medium sm:text-sm"
+                        style={{ color: "var(--acolhe-fg)" }}
+                      >
                         {new Date(v.dataPrevista).toLocaleDateString("pt-BR")}
                       </span>
                       {v.dataRealizada && (
-                        <span className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                        <span
+                          className="text-[10px] sm:text-xs"
+                          style={{ color: "var(--acolhe-muted-fg)" }}
+                        >
                           as{" "}
                           {new Date(v.dataRealizada).toLocaleTimeString("pt-BR", {
                             hour: "2-digit",
@@ -396,7 +404,7 @@ export default function VisitasPage() {
                     </div>
                     {v.isAtrasada && v.diasAtraso !== null && (
                       <span
-                        className="text-xs font-semibold"
+                        className="text-[10px] font-semibold sm:text-xs"
                         style={{ color: "var(--acolhe-danger)" }}
                       >
                         {v.diasAtraso} {v.diasAtraso === 1 ? "dia" : "dias"} de atraso
@@ -498,9 +506,8 @@ export default function VisitasPage() {
         {/* Drawer */}
         {selectedId && detail && (
           <aside
-            className="flex w-96 flex-col overflow-hidden rounded-xl"
+            className="fixed inset-0 z-50 flex w-full flex-col overflow-hidden bg-[var(--acolhe-card)] lg:static lg:z-auto lg:w-96 lg:rounded-xl"
             style={{
-              backgroundColor: "var(--acolhe-card)",
               border: "1px solid var(--acolhe-border)",
               boxShadow: "var(--acolhe-shadow-md)",
             }}
@@ -690,7 +697,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 rounded-lg px-3 text-sm outline-none"
+      className="h-9 w-full rounded-lg px-3 text-sm outline-none lg:w-auto"
       style={{
         backgroundColor: "var(--acolhe-card)",
         border: "1px solid var(--acolhe-border)",
@@ -706,7 +713,6 @@ function KpiCard({
   label,
   value,
   color,
-  bg,
   highlight = false,
 }: {
   label: string;
@@ -717,28 +723,28 @@ function KpiCard({
 }) {
   return (
     <div
-      className="rounded-lg px-5 py-4"
+      className="rounded-lg p-3 sm:px-5 sm:py-4"
       style={{
         backgroundColor: "var(--acolhe-card)",
         border: highlight ? `1px solid ${color}` : "1px solid var(--acolhe-border)",
         boxShadow: "var(--acolhe-shadow-sm)",
       }}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-1">
         <p
-          className="text-[10px] font-semibold uppercase tracking-wider"
+          className="truncate text-[9px] font-semibold uppercase tracking-wider sm:text-[10px]"
           style={{ color: "var(--acolhe-muted-fg)" }}
         >
           {label}
         </p>
         <span
-          className="inline-block h-2 w-2 rounded-full"
+          className="inline-block h-2 w-2 flex-shrink-0 rounded-full"
           style={{ backgroundColor: color }}
           aria-hidden="true"
         />
       </div>
       <p
-        className="mt-2 text-2xl font-bold leading-none"
+        className="mt-1 text-lg font-bold leading-none sm:mt-2 sm:text-2xl"
         style={{
           fontFamily: "var(--font-plus-jakarta), sans-serif",
           color,
@@ -746,13 +752,6 @@ function KpiCard({
       >
         {value}
       </p>
-      <p className="mt-1 text-[10px]" style={{ color: "var(--acolhe-muted-fg)" }}>
-        {/* keep height consistent */}
-        <span style={{ visibility: "hidden" }}>·</span>
-      </p>
-      {highlight && (
-        <div className="absolute" style={{ background: bg, opacity: 0, pointerEvents: "none" }} />
-      )}
     </div>
   );
 }

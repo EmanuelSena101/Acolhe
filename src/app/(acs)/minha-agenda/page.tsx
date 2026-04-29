@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { signOut } from "next-auth/react";
 import {
   MapPin,
   Clock,
@@ -19,7 +18,6 @@ import {
   Activity,
   Baby,
   Loader2,
-  LogOut,
   Calendar,
   Users as UsersIcon,
 } from "lucide-react";
@@ -146,49 +144,29 @@ export default function MinhaAgendaPage() {
 
   return (
     <div className="flex min-h-screen flex-col" style={{ position: "relative" }}>
-      {/* Header */}
+      {/* Header (gradient azul-petróleo, espaço pra hamburger no mobile) */}
       <header
-        className="flex-shrink-0 px-4 pb-4 pt-10"
+        className="flex-shrink-0 px-4 pb-5 pl-16 pt-5 lg:rounded-b-2xl lg:px-6 lg:pl-6 lg:pt-6"
         style={{ backgroundColor: "var(--acolhe-primary)" }}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AcolheLogo />
-            <span
-              className="text-base font-semibold text-white"
-              style={{ fontFamily: "var(--font-plus-jakarta), sans-serif" }}
-            >
-              Acolhe
-            </span>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.15)", color: "white" }}
-            aria-label="Sair"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
-
-        <p className="text-xs font-medium capitalize" style={{ color: "rgba(232,241,246,0.7)" }}>
+        <p className="text-xs font-medium capitalize" style={{ color: "rgba(232,241,246,0.75)" }}>
           {dataLabel}
           {equipeNome ? ` · ${equipeNome}` : ""}
         </p>
         <h1
-          className="mt-0.5 text-lg font-bold text-white"
+          className="mt-0.5 text-xl font-bold text-white lg:text-2xl"
           style={{ fontFamily: "var(--font-plus-jakarta), sans-serif" }}
         >
           Agenda de hoje
         </h1>
 
         {agenda && total > 0 && (
-          <div className="mt-3 space-y-1.5">
+          <div className="mt-4 space-y-1.5 lg:max-w-md">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-white">
-                {concluidas} de {total} visitas
+                {concluidas} de {total} {total === 1 ? "visita" : "visitas"}
               </span>
-              <span className="text-xs font-medium text-white">{progress}%</span>
+              <span className="text-xs font-semibold text-white">{progress}%</span>
             </div>
             <div
               className="h-2 overflow-hidden rounded-full"
@@ -259,11 +237,10 @@ export default function MinhaAgendaPage() {
         )}
       </main>
 
-      {/* Bottom nav */}
+      {/* Bottom nav (mobile only — desktop uses sidebar) */}
       <nav
-        className="fixed bottom-0 left-1/2 z-30 flex w-full -translate-x-1/2 items-center justify-around px-4 py-3"
+        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around px-4 py-3 lg:hidden"
         style={{
-          maxWidth: 430,
           backgroundColor: "var(--acolhe-card)",
           borderTop: "1px solid var(--acolhe-border)",
           boxShadow: "0 -4px 12px rgba(28,26,23,0.06)",
@@ -437,9 +414,8 @@ function VisitaDrawer({
         onClick={onClose}
       />
       <div
-        className="fixed bottom-0 left-1/2 z-50 w-full -translate-x-1/2 rounded-t-2xl"
+        className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-2xl rounded-t-2xl lg:left-60 lg:max-w-2xl"
         style={{
-          maxWidth: 430,
           backgroundColor: "var(--acolhe-card)",
           boxShadow: "0 -8px 32px rgba(28,26,23,0.18)",
           maxHeight: "85vh",
@@ -708,16 +684,5 @@ function EmptyMsg({ children }: { children: React.ReactNode }) {
         {children}
       </p>
     </div>
-  );
-}
-
-function AcolheLogo({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" aria-label="Logo Acolhe">
-      <circle cx="20" cy="20" r="20" fill="rgba(255,255,255,0.15)" />
-      <circle cx="20" cy="20" r="10" fill="none" stroke="white" strokeWidth="2.5" />
-      <rect x="18.5" y="13" width="3" height="14" rx="1.5" fill="white" />
-      <rect x="13" y="18.5" width="14" height="3" rx="1.5" fill="white" />
-    </svg>
   );
 }

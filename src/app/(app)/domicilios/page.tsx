@@ -54,9 +54,9 @@ export default function DomiciliosPage() {
   const [search, setSearch] = useState("");
   const [equipeId, setEquipeId] = useState<string>("all");
   const [microareaId, setMicroareaId] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<
-    "em_dia" | "proximo_prazo" | "atrasado" | "all"
-  >("all");
+  const [statusFilter, setStatusFilter] = useState<"em_dia" | "proximo_prazo" | "atrasado" | "all">(
+    "all",
+  );
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -202,7 +202,7 @@ export default function DomiciliosPage() {
           ) : (
             <div className="space-y-3">
               <div
-                className="grid gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+                className="hidden gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-wider lg:grid"
                 style={{
                   color: "var(--acolhe-muted-fg)",
                   gridTemplateColumns: "2fr 1fr 0.7fr 1fr 1fr 0.3fr",
@@ -224,9 +224,10 @@ export default function DomiciliosPage() {
                   <button
                     key={d.id}
                     onClick={() => setSelectedId(isSelected ? null : d.id)}
-                    className="grid w-full gap-4 rounded-lg px-4 py-3 text-left transition-all"
+                    className="flex w-full flex-col gap-2 rounded-lg px-4 py-3 text-left transition-all lg:grid lg:gap-4"
                     style={{
-                      gridTemplateColumns: "2fr 1fr 0.7fr 1fr 1fr 0.3fr",
+                      ["--cols" as string]: "2fr 1fr 0.7fr 1fr 1fr 0.3fr",
+                      gridTemplateColumns: "var(--cols, 2fr 1fr 0.7fr 1fr 1fr 0.3fr)",
                       border: `1px solid ${
                         isSelected ? "var(--acolhe-primary)" : "var(--acolhe-border)"
                       }`,
@@ -243,25 +244,25 @@ export default function DomiciliosPage() {
                       >
                         {d.logradouro}, {d.numero}
                       </p>
-                      <p
-                        className="truncate text-xs"
-                        style={{ color: "var(--acolhe-muted-fg)" }}
-                      >
+                      <p className="truncate text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
                         {d.bairro}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs lg:text-sm">
+                      <span
+                        className="font-semibold uppercase tracking-wider lg:hidden"
+                        style={{ color: "var(--acolhe-muted-fg)" }}
+                      >
+                        Microarea:
+                      </span>
                       {d.microarea ? (
                         <>
                           <span
                             className="inline-block h-3 w-3 rounded-full"
                             style={{ backgroundColor: d.microarea.equipe.cor }}
                           />
-                          <span
-                            className="text-sm font-medium"
-                            style={{ color: "var(--acolhe-fg)" }}
-                          >
+                          <span className="font-medium" style={{ color: "var(--acolhe-fg)" }}>
                             {d.microarea.codigo}
                           </span>
                         </>
@@ -271,32 +272,49 @@ export default function DomiciliosPage() {
                     </div>
 
                     <div
-                      className="flex items-center justify-center text-sm font-medium"
+                      className="flex items-center justify-start gap-2 text-xs lg:justify-center lg:text-sm"
                       style={{ color: "var(--acolhe-fg)" }}
                     >
-                      {d._count.moradores}
+                      <span
+                        className="font-semibold uppercase tracking-wider lg:hidden"
+                        style={{ color: "var(--acolhe-muted-fg)" }}
+                      >
+                        Moradores:
+                      </span>
+                      <span className="font-medium">{d._count.moradores}</span>
                     </div>
 
-                    <div className="text-sm" style={{ color: "var(--acolhe-fg)" }}>
+                    <div
+                      className="flex items-center gap-2 text-xs lg:text-sm"
+                      style={{ color: "var(--acolhe-fg)" }}
+                    >
+                      <span
+                        className="font-semibold uppercase tracking-wider lg:hidden"
+                        style={{ color: "var(--acolhe-muted-fg)" }}
+                      >
+                        Ultima:
+                      </span>
                       {d.ultimaVisita
                         ? new Date(d.ultimaVisita).toLocaleDateString("pt-BR")
                         : "Nunca"}
                     </div>
 
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-between gap-2">
                       <span
                         className="rounded-full px-2 py-0.5 text-xs font-semibold"
                         style={{ backgroundColor: config.bg, color: config.color }}
                       >
                         {config.label}
                       </span>
-                    </div>
-
-                    <div className="flex items-center justify-end">
                       <ChevronRight
                         size={16}
+                        className="lg:hidden"
                         style={{ color: "var(--acolhe-muted-fg)" }}
                       />
+                    </div>
+
+                    <div className="hidden items-center justify-end lg:flex">
+                      <ChevronRight size={16} style={{ color: "var(--acolhe-muted-fg)" }} />
                     </div>
                   </button>
                 );
@@ -340,9 +358,8 @@ export default function DomiciliosPage() {
         {/* Drawer */}
         {selectedId && detail && (
           <aside
-            className="flex w-96 flex-col overflow-hidden rounded-xl"
+            className="fixed inset-0 z-50 flex w-full flex-col overflow-hidden bg-[var(--acolhe-card)] lg:static lg:z-auto lg:w-96 lg:rounded-xl"
             style={{
-              backgroundColor: "var(--acolhe-card)",
               border: "1px solid var(--acolhe-border)",
               boxShadow: "var(--acolhe-shadow-md)",
             }}
@@ -402,10 +419,7 @@ export default function DomiciliosPage() {
                       className="inline-block h-3 w-3 rounded-full"
                       style={{ backgroundColor: detail.microarea.equipe.cor }}
                     />
-                    <span
-                      className="text-sm font-medium"
-                      style={{ color: "var(--acolhe-fg)" }}
-                    >
+                    <span className="text-sm font-medium" style={{ color: "var(--acolhe-fg)" }}>
                       {detail.microarea.codigo} · {detail.microarea.equipe.nome}
                     </span>
                   </div>
@@ -488,10 +502,7 @@ export default function DomiciliosPage() {
                           por {v.acs.usuario.nome}
                         </p>
                         {v.observacoes && (
-                          <p
-                            className="mt-1 text-xs"
-                            style={{ color: "var(--acolhe-fg)" }}
-                          >
+                          <p className="mt-1 text-xs" style={{ color: "var(--acolhe-fg)" }}>
                             {v.observacoes}
                           </p>
                         )}

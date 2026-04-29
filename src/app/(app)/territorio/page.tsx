@@ -347,7 +347,7 @@ export default function TerritorioPage() {
       {/* Microarea detail drawer */}
       {selectedMicroarea && (
         <div
-          className="fixed inset-y-0 right-0 z-50 w-96 overflow-y-auto"
+          className="fixed inset-0 z-50 w-full overflow-y-auto lg:inset-y-0 lg:left-auto lg:right-0 lg:w-96"
           style={{
             backgroundColor: "var(--acolhe-card)",
             boxShadow: "0 -8px 32px rgba(28,26,23,0.15)",
