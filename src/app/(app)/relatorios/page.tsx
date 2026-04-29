@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Download, FileText, AlertTriangle, MapPin } from "lucide-react";
 import {
   StatusVisitasChart,
   CondicoesChart,
   CoberturaPorUbsChart,
+  CoberturaPorEquipeChart,
   ProdutividadeAcsChart,
   VisitasPorDiaChart,
+  DistribuicaoStatusChart,
 } from "@/components/charts/relatorio-charts";
 
 export default function RelatoriosPage() {
@@ -20,6 +22,11 @@ export default function RelatoriosPage() {
     const now = new Date();
     return { mes: now.getMonth() + 1, ano: now.getFullYear() };
   });
+  const [ubsFilter, setUbsFilter] = useState<string>("all");
+  const [equipeFilter, setEquipeFilter] = useState<string>("all");
+  const [exporting, setExporting] = useState(false);
+
+  const chartsRootRef = useRef<HTMLDivElement>(null);
 
   const { data: cobertura } = trpc.relatorios.coberturaMensal.useQuery(
     { prefeituraId: prefeituraId!, mes: periodo.mes, ano: periodo.ano },
@@ -31,13 +38,24 @@ export default function RelatoriosPage() {
     { enabled: !!prefeituraId },
   );
 
+  const { data: equipes } = trpc.equipe.listByPrefeitura.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
   const { data: atrasadas } = trpc.relatorios.visitasAtrasadas.useQuery(
     { prefeituraId: prefeituraId! },
     { enabled: !!prefeituraId },
   );
 
   const { data: charts } = trpc.relatorios.charts.useQuery(
-    { prefeituraId: prefeituraId!, mes: periodo.mes, ano: periodo.ano },
+    {
+      prefeituraId: prefeituraId!,
+      mes: periodo.mes,
+      ano: periodo.ano,
+      ubsId: ubsFilter === "all" ? undefined : ubsFilter,
+      equipeId: equipeFilter === "all" ? undefined : equipeFilter,
+    },
     { enabled: !!prefeituraId },
   );
 
@@ -48,12 +66,18 @@ export default function RelatoriosPage() {
     return { mes: d.getMonth() + 1, ano: d.getFullYear() };
   });
 
+  const periodoLabel = `${new Date(periodo.ano, periodo.mes - 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  })}`;
+
   async function exportCSV() {
     if (!cobertura || !atrasadas) return;
-
     const lines = [
       "Relatorio de Cobertura Mensal",
-      `Periodo: ${periodo.mes}/${periodo.ano}`,
+      `Prefeitura: ${prefeituraNome ?? ""}`,
+      `Periodo: ${periodoLabel}`,
+      `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
       "",
       "Indicador;Valor",
       `Total Domicilios;${cobertura.totalDomicilios}`,
@@ -66,13 +90,11 @@ export default function RelatoriosPage() {
       "Visitas Atrasadas - Detalhes",
       "Endereco;Microarea;ACS;Data Prevista",
     ];
-
     for (const v of atrasadas.visitas.slice(0, 50)) {
       lines.push(
         `${v.domicilio.logradouro} ${v.domicilio.numero};${v.domicilio.microarea?.codigo ?? ""};${v.acs.usuario.nome};${new Date(v.dataPrevista).toLocaleDateString("pt-BR")}`,
       );
     }
-
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -84,62 +106,116 @@ export default function RelatoriosPage() {
 
   async function exportPDF() {
     if (!cobertura || !atrasadas) return;
+    setExporting(true);
+    try {
+      const [{ default: jsPDF }, autoTableMod, htmlToImage] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+        import("html-to-image"),
+      ]);
+      const autoTable = autoTableMod.default;
 
-    const { default: jsPDF } = await import("jspdf");
-    const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
 
-    const doc = new jsPDF();
+      // Header
+      doc.setFillColor(27, 79, 107);
+      doc.rect(0, 0, pageWidth, 28, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text("Acolhe — Relatorio de Cobertura", margin, 15);
+      doc.setFontSize(10);
+      doc.text(prefeituraNome ?? "", margin, 22);
 
-    doc.setFontSize(18);
-    doc.text("Acolhe - Relatorio de Cobertura", 14, 22);
+      doc.setTextColor(28, 26, 23);
+      doc.setFontSize(10);
+      doc.text(`Periodo: ${periodoLabel}`, margin, 36);
+      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, margin, 41);
+      if (ubsFilter !== "all") {
+        const ubs = ubsList?.find((u) => u.id === ubsFilter);
+        if (ubs) doc.text(`UBS: ${ubs.nome}`, margin, 46);
+      }
+      if (equipeFilter !== "all") {
+        const eq = equipes?.find((e) => e.id === equipeFilter);
+        if (eq) doc.text(`Equipe: ${eq.nome}`, margin, 51);
+      }
 
-    doc.setFontSize(11);
-    doc.text(`Periodo: ${periodo.mes}/${periodo.ano}`, 14, 32);
-    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 38);
-
-    doc.setFontSize(13);
-    doc.text("Indicadores", 14, 50);
-
-    autoTable(doc, {
-      startY: 55,
-      head: [["Indicador", "Valor"]],
-      body: [
-        ["Total Domicilios", String(cobertura.totalDomicilios)],
-        ["Visitados no Mes", String(cobertura.visitadosNoMes)],
-        ["Cobertura (%)", `${cobertura.cobertura}%`],
-        ["Total ACS", String(cobertura.totalAcs)],
-        ["ACS Ativos", String(cobertura.acsAtivos)],
-        ["Visitas Atrasadas", String(atrasadas.total)],
-      ],
-      theme: "grid",
-      headStyles: { fillColor: [27, 79, 107] },
-    });
-
-    const finalY =
-      ((doc as unknown as Record<string, Record<string, number>>).lastAutoTable
-        ?.finalY as number) ?? 120;
-
-    if (atrasadas.visitas.length > 0) {
-      doc.setFontSize(13);
-      doc.text("Visitas Atrasadas", 14, finalY + 15);
-
+      // KPIs table
       autoTable(doc, {
-        startY: finalY + 20,
-        head: [["Endereco", "Microarea", "ACS", "Data Prevista"]],
-        body: atrasadas.visitas
-          .slice(0, 30)
-          .map((v) => [
-            `${v.domicilio.logradouro} ${v.domicilio.numero}`,
-            v.domicilio.microarea?.codigo ?? "",
-            v.acs.usuario.nome,
-            new Date(v.dataPrevista).toLocaleDateString("pt-BR"),
-          ]),
+        startY: 58,
+        head: [["Indicador", "Valor"]],
+        body: [
+          ["Total Domicilios", String(cobertura.totalDomicilios)],
+          ["Visitados no Mes", String(cobertura.visitadosNoMes)],
+          ["Cobertura (%)", `${cobertura.cobertura}%`],
+          ["Total ACS", String(cobertura.totalAcs)],
+          ["ACS Ativos", String(cobertura.acsAtivos)],
+          ["Visitas Atrasadas", String(atrasadas.total)],
+        ],
         theme: "grid",
         headStyles: { fillColor: [27, 79, 107] },
+        styles: { fontSize: 9 },
       });
-    }
 
-    doc.save(`relatorio_cobertura_${periodo.mes}_${periodo.ano}.pdf`);
+      // Charts: capture each ChartCard with [data-capture-id]
+      const root = chartsRootRef.current;
+      if (root) {
+        const chartNodes = Array.from(root.querySelectorAll<HTMLDivElement>("[data-capture-id]"));
+
+        let y =
+          ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ??
+            80) + 10;
+
+        for (const node of chartNodes) {
+          const dataUrl = await htmlToImage.toPng(node, {
+            backgroundColor: "#FFFFFF",
+            pixelRatio: 2,
+          });
+          // Compute scaled dimensions
+          const imgWidth = pageWidth - margin * 2;
+          const ratio = node.offsetHeight / node.offsetWidth;
+          const imgHeight = imgWidth * ratio;
+
+          if (y + imgHeight + 8 > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.addImage(dataUrl, "PNG", margin, y, imgWidth, imgHeight);
+          y += imgHeight + 6;
+        }
+      }
+
+      // Visitas atrasadas table on a new page
+      if (atrasadas.visitas.length > 0) {
+        doc.addPage();
+        doc.setFontSize(13);
+        doc.text("Visitas Atrasadas", margin, margin + 4);
+        autoTable(doc, {
+          startY: margin + 8,
+          head: [["Endereco", "Microarea", "ACS", "Data Prevista"]],
+          body: atrasadas.visitas
+            .slice(0, 50)
+            .map((v) => [
+              `${v.domicilio.logradouro} ${v.domicilio.numero}`,
+              v.domicilio.microarea?.codigo ?? "—",
+              v.acs.usuario.nome,
+              new Date(v.dataPrevista).toLocaleDateString("pt-BR"),
+            ]),
+          theme: "grid",
+          headStyles: { fillColor: [155, 28, 28] },
+          styles: { fontSize: 8 },
+        });
+      }
+
+      doc.save(`relatorio_${periodo.mes}_${periodo.ano}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao gerar PDF");
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -164,7 +240,7 @@ export default function RelatoriosPage() {
               Relatorios
             </h1>
             <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
-              {prefeituraNome ?? "Prefeitura"}
+              {prefeituraNome ?? "Prefeitura"} · {periodoLabel}
             </p>
           </div>
         </div>
@@ -184,7 +260,7 @@ export default function RelatoriosPage() {
           </button>
           <button
             onClick={exportPDF}
-            disabled={!cobertura}
+            disabled={!cobertura || exporting}
             className="flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               backgroundColor: "var(--acolhe-primary)",
@@ -193,38 +269,55 @@ export default function RelatoriosPage() {
             }}
           >
             <FileText size={15} />
-            PDF
+            {exporting ? "Gerando..." : "PDF"}
           </button>
         </div>
       </div>
 
-      {/* Período selector */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium" style={{ color: "var(--acolhe-fg)" }}>
-          Periodo:
-        </label>
-        <select
-          value={`${periodo.mes}-${periodo.ano}`}
-          onChange={(e) => {
-            const [m, a] = e.target.value.split("-").map(Number);
-            setPeriodo({ mes: m, ano: a });
-          }}
-          className="h-9 rounded-lg px-3 text-sm outline-none"
-          style={{
-            backgroundColor: "var(--acolhe-card)",
-            border: "1px solid var(--acolhe-border)",
-            color: "var(--acolhe-fg)",
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-3">
+        <FilterSelect
+          value={`${periodo.ano}-${periodo.mes}`}
+          onChange={(v) => {
+            const [a, m] = v.split("-").map(Number);
+            setPeriodo({ ano: a, mes: m });
           }}
         >
           {meses.map((m) => (
-            <option key={`${m.mes}-${m.ano}`} value={`${m.mes}-${m.ano}`}>
+            <option key={`${m.ano}-${m.mes}`} value={`${m.ano}-${m.mes}`}>
               {new Date(m.ano, m.mes - 1).toLocaleDateString("pt-BR", {
                 month: "long",
                 year: "numeric",
               })}
             </option>
           ))}
-        </select>
+        </FilterSelect>
+
+        <FilterSelect
+          value={ubsFilter}
+          onChange={(v) => {
+            setUbsFilter(v);
+            setEquipeFilter("all");
+          }}
+        >
+          <option value="all">Todas as UBS</option>
+          {ubsList?.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.nome}
+            </option>
+          ))}
+        </FilterSelect>
+
+        <FilterSelect value={equipeFilter} onChange={setEquipeFilter}>
+          <option value="all">Todas as equipes</option>
+          {equipes
+            ?.filter((eq) => ubsFilter === "all" || eq.ubs.id === ubsFilter)
+            .map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.nome}
+              </option>
+            ))}
+        </FilterSelect>
       </div>
 
       {/* KPI cards */}
@@ -257,15 +350,19 @@ export default function RelatoriosPage() {
         </div>
       )}
 
-      {/* Charts */}
+      {/* Charts (capture root) */}
       {charts && (
-        <div className="space-y-4">
+        <div ref={chartsRootRef} className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
+            <DistribuicaoStatusChart data={charts.distribuicaoStatus} />
             <StatusVisitasChart data={charts.statusVisitas} />
-            <CondicoesChart data={charts.condicoes} />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <CoberturaPorUbsChart data={charts.coberturaPorUbs} />
+            <CoberturaPorEquipeChart data={charts.coberturaPorEquipe} />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CondicoesChart data={charts.condicoes} />
             <ProdutividadeAcsChart data={charts.produtividadeAcs} />
           </div>
           <VisitasPorDiaChart data={charts.visitasPorDia} />
@@ -326,10 +423,7 @@ export default function RelatoriosPage() {
             </thead>
             <tbody>
               {atrasadas.visitas.map((v) => (
-                <tr
-                  key={v.id}
-                  style={{ borderBottom: "1px solid var(--acolhe-border)" }}
-                >
+                <tr key={v.id} style={{ borderBottom: "1px solid var(--acolhe-border)" }}>
                   <td className="px-4 py-3 font-medium" style={{ color: "var(--acolhe-fg)" }}>
                     {v.domicilio.logradouro} {v.domicilio.numero}
                   </td>
@@ -377,10 +471,7 @@ function KpiBox({
       </p>
       <p
         className="mt-1 text-2xl font-bold"
-        style={{
-          fontFamily: "var(--font-plus-jakarta), sans-serif",
-          color: valueColor,
-        }}
+        style={{ fontFamily: "var(--font-plus-jakarta), sans-serif", color: valueColor }}
       >
         {value}
       </p>
@@ -448,5 +539,30 @@ function ColHead({ children }: { children: React.ReactNode }) {
     >
       {children}
     </th>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (_v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-9 rounded-lg px-3 text-sm outline-none"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        color: "var(--acolhe-fg)",
+      }}
+    >
+      {children}
+    </select>
   );
 }

@@ -161,22 +161,30 @@ export const relatoriosRouter = createTRPCRouter({
         prefeituraId: z.string(),
         mes: z.number().int().min(1).max(12),
         ano: z.number().int().min(2020).max(2030),
+        ubsId: z.string().optional(),
+        equipeId: z.string().optional(),
       }),
     )
     .query(async ({ input }) => {
       const dataInicio = new Date(input.ano, input.mes - 1, 1);
       const dataFim = new Date(input.ano, input.mes, 0, 23, 59, 59);
       const ubsList = await db.uBS.findMany({
-        where: { prefeituraId: input.prefeituraId },
+        where: {
+          prefeituraId: input.prefeituraId,
+          ...(input.ubsId && { id: input.ubsId }),
+        },
         select: { id: true, nome: true },
       });
       const ubsIds = ubsList.map((u) => u.id);
+      const equipeFilter = input.equipeId
+        ? { equipeId: input.equipeId }
+        : { equipe: { ubsId: { in: ubsIds } } };
 
       // 1. Status de visitas (pizza)
       const statusRows = await db.visita.groupBy({
         by: ["status"],
         where: {
-          acs: { equipe: { ubsId: { in: ubsIds } } },
+          acs: equipeFilter,
           dataPrevista: { gte: dataInicio, lte: dataFim },
         },
         _count: { _all: true },
@@ -190,7 +198,7 @@ export const relatoriosRouter = createTRPCRouter({
       const moradores = await db.morador.findMany({
         where: {
           ativo: true,
-          domicilio: { microarea: { equipe: { ubsId: { in: ubsIds } } } },
+          domicilio: { microarea: equipeFilter },
         },
         select: { condicoes: true },
       });
@@ -238,6 +246,7 @@ export const relatoriosRouter = createTRPCRouter({
 
       // 4. Produtividade por ACS (barra vertical) — top 10
       type ProdutividadeRow = { acsNome: string; realizadas: bigint };
+      const equipeIdSql = input.equipeId ? Prisma.sql`AND e.id = ${input.equipeId}` : Prisma.empty;
       const produtividadeRaw = await db.$queryRaw<ProdutividadeRow[]>(
         Prisma.sql`
           SELECT u.nome AS "acsNome", COUNT(v.id) AS realizadas
@@ -248,6 +257,7 @@ export const relatoriosRouter = createTRPCRouter({
             AND v.status = 'REALIZADA'
             AND v."dataRealizada" BETWEEN ${dataInicio} AND ${dataFim}
           WHERE e."ubsId" IN (${Prisma.join(ubsIds.length > 0 ? ubsIds : [""])})
+          ${equipeIdSql}
           GROUP BY a.id, u.nome
           ORDER BY realizadas DESC
           LIMIT 10
@@ -267,6 +277,7 @@ export const relatoriosRouter = createTRPCRouter({
           JOIN "ACS" a ON a.id = v."acsId"
           JOIN "EquipeESF" e ON e.id = a."equipeId"
           WHERE e."ubsId" IN (${Prisma.join(ubsIds.length > 0 ? ubsIds : [""])})
+            ${equipeIdSql}
             AND v.status = 'REALIZADA'
             AND v."dataRealizada" >= NOW() - INTERVAL '30 days'
             AND v."dataRealizada" IS NOT NULL
@@ -279,12 +290,82 @@ export const relatoriosRouter = createTRPCRouter({
         total: Number(r.total),
       }));
 
+      // 6. Distribuição de domicílios por status de visita (pizza)
+      const now = new Date();
+      const dias30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const dias60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const [emDia, proximoPrazo, atrasado] = await Promise.all([
+        db.domicilio.count({
+          where: {
+            microarea: equipeFilter,
+            ultimaVisita: { gte: dias30 },
+          },
+        }),
+        db.domicilio.count({
+          where: {
+            microarea: equipeFilter,
+            ultimaVisita: { gte: dias60, lt: dias30 },
+          },
+        }),
+        db.domicilio.count({
+          where: {
+            microarea: equipeFilter,
+            OR: [{ ultimaVisita: { lt: dias60 } }, { ultimaVisita: null }],
+          },
+        }),
+      ]);
+      const distribuicaoStatus = [
+        { status: "EM_DIA", total: emDia },
+        { status: "PROXIMO_PRAZO", total: proximoPrazo },
+        { status: "ATRASADO", total: atrasado },
+      ];
+
+      // 7. Cobertura por equipe ESF (barra horizontal)
+      type EquipeRow = {
+        equipeNome: string;
+        equipeCor: string;
+        total: bigint;
+        visitados: bigint;
+      };
+      const equipeRows = await db.$queryRaw<EquipeRow[]>(
+        Prisma.sql`
+          SELECT
+            e.nome AS "equipeNome",
+            e.cor AS "equipeCor",
+            (SELECT COUNT(*) FROM "Domicilio" d
+              JOIN "Microarea" m ON m.id = d."microareaId"
+              WHERE m."equipeId" = e.id) AS "total",
+            (SELECT COUNT(*) FROM "Domicilio" d
+              JOIN "Microarea" m ON m.id = d."microareaId"
+              WHERE m."equipeId" = e.id
+                AND d."ultimaVisita" >= ${dataInicio}
+                AND d."ultimaVisita" <= ${dataFim}) AS "visitados"
+          FROM "EquipeESF" e
+          WHERE e."ubsId" IN (${Prisma.join(ubsIds.length > 0 ? ubsIds : [""])})
+            ${equipeIdSql}
+          ORDER BY e.nome ASC
+        `,
+      );
+      const coberturaPorEquipe = equipeRows.map((r) => {
+        const total = Number(r.total);
+        const visitados = Number(r.visitados);
+        return {
+          equipe: r.equipeNome,
+          cor: r.equipeCor,
+          total,
+          visitados,
+          cobertura: total > 0 ? Math.round((visitados / total) * 100) : 0,
+        };
+      });
+
       return {
         statusVisitas,
         condicoes,
         coberturaPorUbs,
+        coberturaPorEquipe,
         produtividadeAcs,
         visitasPorDia,
+        distribuicaoStatus,
       };
     }),
 
