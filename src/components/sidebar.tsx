@@ -9,8 +9,7 @@ import {
   Home,
   ClipboardList,
   Calendar,
-  Upload,
-  Download,
+  ArrowUpDown,
   BarChart3,
   Shield,
   LogOut,
@@ -64,15 +63,9 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["ACS"],
   },
   {
-    href: "/importacao",
-    label: "Importacao",
-    icon: <Upload className="h-[18px] w-[18px]" />,
-    roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
-  },
-  {
-    href: "/exportacao",
-    label: "Exportacao",
-    icon: <Download className="h-[18px] w-[18px]" />,
+    href: "/esus",
+    label: "e-SUS APS",
+    icon: <ArrowUpDown className="h-[18px] w-[18px]" />,
     roles: ["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"],
   },
   {
@@ -144,14 +137,14 @@ export function Sidebar() {
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden text-white/70 hover:text-white"
+            className="text-white/70 hover:text-white lg:hidden"
             aria-label="Fechar menu"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-0.5">
             {visibleItems.map((item) => {
               const isActive =
@@ -201,7 +194,7 @@ export function Sidebar() {
         </nav>
 
         <div className="p-3" style={{ borderTop: `1px solid ${SIDEBAR_BORDER}` }}>
-          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-md">
+          <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2">
             <div
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
               style={{
