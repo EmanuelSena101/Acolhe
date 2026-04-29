@@ -24,6 +24,32 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 210 100% 40%;
     --radius: 0.5rem;
+
+    /* Acolhe — Design System Tokens (institucional, calmo, WCAG AA) */
+    --acolhe-primary: #1B4F6B;
+    --acolhe-primary-hover: #163F57;
+    --acolhe-primary-light: #E8F1F6;
+    --acolhe-primary-foreground: #FFFFFF;
+    --acolhe-accent: #D97706;
+    --acolhe-accent-light: #FEF3C7;
+    --acolhe-bg: #F7F5F2;
+    --acolhe-fg: #1C1A17;
+    --acolhe-card: #FFFFFF;
+    --acolhe-muted: #EEEBE6;
+    --acolhe-muted-fg: #6B6560;
+    --acolhe-border: #DDD9D3;
+    --acolhe-success: #0F766E;
+    --acolhe-success-light: #CCFBF1;
+    --acolhe-warning: #B45309;
+    --acolhe-warning-light: #FEF3C7;
+    --acolhe-danger: #9B1C1C;
+    --acolhe-danger-light: #FEE2E2;
+    --acolhe-map-ok: #0F766E;
+    --acolhe-map-alert: #D97706;
+    --acolhe-map-critical: #BE123C;
+    --acolhe-shadow-sm: 0 1px 2px 0 rgb(28 26 23 / 0.06);
+    --acolhe-shadow-md: 0 2px 8px 0 rgb(28 26 23 / 0.08), 0 1px 2px 0 rgb(28 26 23 / 0.04);
+    --acolhe-shadow-lg: 0 8px 24px 0 rgb(28 26 23 / 0.10), 0 2px 4px 0 rgb(28 26 23 / 0.04);
   }
 
   .dark {
