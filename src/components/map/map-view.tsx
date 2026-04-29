@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -32,21 +32,33 @@ const STATUS_ICON_SVGS: Record<string, string> = {
   "atrasado-icon": `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="#BE123C" stroke="#FFFFFF" stroke-width="2.5"/><path d="M12.5 12.5l11 11M23.5 12.5l-11 11" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/></svg>`,
 };
 
-async function loadStatusIcons(map: maplibregl.Map): Promise<void> {
-  await Promise.all(
-    Object.entries(STATUS_ICON_SVGS).map(([name, svg]) => {
-      if (map.hasImage(name)) return Promise.resolve();
-      return new Promise<void>((resolve) => {
-        const img = new Image(36, 36);
-        img.onload = () => {
-          if (!map.hasImage(name)) {
-            map.addImage(name, img);
-          }
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = `data:image/svg+xml;base64,${btoa(svg)}`;
-      });
+function loadIconImage(name: string, svg: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image(36, 36);
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = `data:image/svg+xml;base64,${btoa(svg)}`;
+  });
+}
+
+function registerStatusIconHandler(map: maplibregl.Map): void {
+  map.on("styleimagemissing", async (e) => {
+    const id = e.id;
+    const svg = STATUS_ICON_SVGS[id];
+    if (!svg || map.hasImage(id)) return;
+    const img = await loadIconImage(id, svg);
+    if (img && !map.hasImage(id)) {
+      map.addImage(id, img);
+    }
+  });
+
+  void Promise.all(
+    Object.entries(STATUS_ICON_SVGS).map(async ([name, svg]) => {
+      if (map.hasImage(name)) return;
+      const img = await loadIconImage(name, svg);
+      if (img && !map.hasImage(name)) {
+        map.addImage(name, img);
+      }
     }),
   );
 }
@@ -66,6 +78,7 @@ export function MapView({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onMicroareaClickRef = useRef(onMicroareaClick);
   onMicroareaClickRef.current = onMicroareaClick;
+  const [styleReady, setStyleReady] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -101,11 +114,20 @@ export function MapView({
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
 
+    registerStatusIconHandler(map);
+
     mapRef.current = map;
+
+    if (map.isStyleLoaded()) {
+      setStyleReady(true);
+    } else {
+      map.once("load", () => setStyleReady(true));
+    }
 
     return () => {
       map.remove();
       mapRef.current = null;
+      setStyleReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -177,24 +199,19 @@ export function MapView({
       }
     };
 
-    if (map.isStyleLoaded()) {
-      handler();
-    } else {
-      map.on("load", handler);
-    }
-  }, [microareas]);
+    if (!styleReady) return;
+    handler();
+  }, [microareas, styleReady]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !domicilios) return;
 
-    const handler = async () => {
+    const handler = () => {
       if (map.getSource("domicilios")) {
         (map.getSource("domicilios") as maplibregl.GeoJSONSource).setData(domicilios);
         return;
       }
-
-      await loadStatusIcons(map);
 
       map.addSource("domicilios", {
         type: "geojson",
@@ -279,12 +296,9 @@ export function MapView({
       });
     };
 
-    if (map.isStyleLoaded()) {
-      handler();
-    } else {
-      map.on("load", handler);
-    }
-  }, [domicilios]);
+    if (!styleReady) return;
+    handler();
+  }, [domicilios, styleReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -309,9 +323,9 @@ export function MapView({
       }
     };
 
-    if (map.isStyleLoaded()) handler();
-    else map.on("load", handler);
-  }, [municipio]);
+    if (!styleReady) return;
+    handler();
+  }, [municipio, styleReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -378,27 +392,23 @@ export function MapView({
       }
     };
 
-    if (map.isStyleLoaded()) handler();
-    else map.on("load", handler);
-  }, [ubs]);
+    if (!styleReady) return;
+    handler();
+  }, [ubs, styleReady]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !bounds) return;
 
-    const apply = () => {
-      map.fitBounds(
-        [
-          [bounds.minLng, bounds.minLat],
-          [bounds.maxLng, bounds.maxLat],
-        ],
-        { padding: 40, duration: 800 },
-      );
-    };
-
-    if (map.isStyleLoaded()) apply();
-    else map.on("load", apply);
-  }, [bounds]);
+    if (!styleReady) return;
+    map.fitBounds(
+      [
+        [bounds.minLng, bounds.minLat],
+        [bounds.maxLng, bounds.maxLat],
+      ],
+      { padding: 40, duration: 800 },
+    );
+  }, [bounds, styleReady]);
 
   return <div ref={containerRef} className={`h-full w-full ${className}`} />;
 }

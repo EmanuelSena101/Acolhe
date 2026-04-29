@@ -2,147 +2,588 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Home, Search } from "lucide-react";
+import {
+  Home,
+  Search,
+  ChevronRight,
+  X,
+  ChevronLeft,
+  ChevronRight as ChevronRightArrow,
+} from "lucide-react";
 
-const TIPO_LABELS: Record<string, string> = {
-  CASA: "Casa",
-  APARTAMENTO: "Apartamento",
-  COMODO: "Comodo",
-  OUTRO: "Outro",
+const STATUS_CONFIG: Record<
+  "em_dia" | "proximo_prazo" | "atrasado",
+  { label: string; color: string; bg: string }
+> = {
+  em_dia: { label: "Em dia", color: "var(--acolhe-success)", bg: "var(--acolhe-success-light)" },
+  proximo_prazo: {
+    label: "Atencao",
+    color: "var(--acolhe-warning)",
+    bg: "var(--acolhe-warning-light)",
+  },
+  atrasado: { label: "Atrasado", color: "var(--acolhe-danger)", bg: "var(--acolhe-danger-light)" },
+};
+
+const VISITA_STATUS_TO_DISPLAY: Record<string, "em_dia" | "proximo_prazo" | "atrasado"> = {
+  REALIZADA: "em_dia",
+  PENDENTE: "proximo_prazo",
+  AUSENTE: "proximo_prazo",
+  RECUSADA: "atrasado",
+  CANCELADA: "atrasado",
+};
+
+const VISITA_STATUS_LABEL: Record<string, string> = {
+  REALIZADA: "Realizada",
+  PENDENTE: "Pendente",
+  AUSENTE: "Ausente",
+  RECUSADA: "Recusada",
+  CANCELADA: "Cancelada",
+};
+
+const CONDICAO_LABEL: Record<string, string> = {
+  HIPERTENSO: "Hipertenso",
+  DIABETICO: "Diabetico",
+  GESTANTE: "Gestante",
+  CARDIACO: "Cardiaco",
+  ACAMADO: "Acamado",
+  BEBE: "Bebe",
+  IDOSO: "Idoso",
 };
 
 export default function DomiciliosPage() {
   const [search, setSearch] = useState("");
+  const [equipeId, setEquipeId] = useState<string>("all");
+  const [microareaId, setMicroareaId] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "em_dia" | "proximo_prazo" | "atrasado" | "all"
+  >("all");
   const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data } = trpc.domicilio.list.useQuery({
-    search: search || undefined,
-    page,
-    perPage: 20,
-  });
+  const { data: prefeituras } = trpc.prefeitura.list.useQuery();
+  const prefeituraId = prefeituras?.[0]?.id;
+
+  const { data: equipes } = trpc.equipe.listByPrefeitura.useQuery(
+    { prefeituraId: prefeituraId! },
+    { enabled: !!prefeituraId },
+  );
+
+  const { data: microareas } = trpc.microarea.list.useQuery(
+    { equipeId: equipeId === "all" ? undefined : equipeId },
+    { enabled: !!prefeituraId },
+  );
+
+  const { data } = trpc.domicilio.list.useQuery(
+    {
+      prefeituraId,
+      equipeId: equipeId === "all" ? undefined : equipeId,
+      microareaId: microareaId === "all" ? undefined : microareaId,
+      status: statusFilter,
+      search: search || undefined,
+      page,
+      perPage: 20,
+    },
+    { enabled: !!prefeituraId },
+  );
+
+  const { data: detail } = trpc.domicilio.getById.useQuery(
+    { id: selectedId! },
+    { enabled: !!selectedId },
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Home className="h-7 w-7 text-blue-700" />
-        <h1 className="text-2xl font-bold text-gray-900">Domicilios</h1>
-      </div>
+    <div className="flex h-[calc(100vh-2rem)] flex-col lg:h-[calc(100vh-4rem)]">
+      {/* Header */}
+      <div className="space-y-4 pb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--acolhe-primary-light)" }}
+          >
+            <Home size={20} style={{ color: "var(--acolhe-primary)" }} />
+          </div>
+          <div>
+            <h1
+              className="text-2xl font-bold leading-tight"
+              style={{
+                fontFamily: "var(--font-plus-jakarta), sans-serif",
+                color: "var(--acolhe-fg)",
+              }}
+            >
+              Domicilios
+            </h1>
+            <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+              Gestao de familias cadastradas no territorio
+            </p>
+          </div>
+        </div>
 
-      <div className="flex flex-wrap gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por logradouro ou bairro..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            className="flex min-w-64 flex-1 items-center gap-2 rounded-lg px-3 py-2"
+            style={{ backgroundColor: "var(--acolhe-muted)" }}
+          >
+            <Search size={16} style={{ color: "var(--acolhe-muted-fg)" }} />
+            <input
+              placeholder="Buscar por endereco, bairro ou morador"
+              className="flex-1 bg-transparent text-sm outline-none"
+              style={{ color: "var(--acolhe-fg)" }}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+
+          <FilterSelect
+            value={equipeId}
+            onChange={(v) => {
+              setEquipeId(v);
+              setMicroareaId("all");
               setPage(1);
             }}
-            className="rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm"
-          />
-        </div>
-      </div>
-
-      {data && (
-        <div className="flex gap-4 text-sm text-gray-600">
-          <span>{data.total} domicilios encontrados</span>
-          <span>
-            Pagina {page} de {data.pages || 1}
-          </span>
-        </div>
-      )}
-
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Logradouro
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Numero
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Bairro
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Tipo
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Microarea
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Moradores
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Visitas
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Ultima Visita
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {data?.items.map((dom) => (
-              <tr key={dom.id} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                  {dom.logradouro}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{dom.numero}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{dom.bairro}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {TIPO_LABELS[dom.tipo] ?? dom.tipo}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {dom.microarea ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span
-                        className="inline-block h-3 w-3 rounded"
-                        style={{ backgroundColor: dom.microarea.equipe.cor }}
-                      />
-                      {dom.microarea.codigo}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {dom._count.moradores}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {dom._count.visitas}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {dom.ultimaVisita ? new Date(dom.ultimaVisita).toLocaleDateString("pt-BR") : "—"}
-                </td>
-              </tr>
+          >
+            <option value="all">Todas as equipes</option>
+            {equipes?.map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.nome}
+              </option>
             ))}
-          </tbody>
-        </table>
+          </FilterSelect>
+
+          <FilterSelect
+            value={microareaId}
+            onChange={(v) => {
+              setMicroareaId(v);
+              setPage(1);
+            }}
+          >
+            <option value="all">Todas as microareas</option>
+            {microareas?.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.codigo}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            value={statusFilter}
+            onChange={(v) => {
+              setStatusFilter(v as typeof statusFilter);
+              setPage(1);
+            }}
+          >
+            <option value="all">Todos os status</option>
+            <option value="em_dia">Em dia</option>
+            <option value="proximo_prazo">Atencao</option>
+            <option value="atrasado">Atrasado</option>
+          </FilterSelect>
+        </div>
+
+        {data && (
+          <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+            {data.total} domicilios encontrados · pagina {page} de {data.pages || 1}
+          </p>
+        )}
       </div>
 
-      {data && data.pages > 1 && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <span className="text-sm text-gray-600">
-            {page} / {data.pages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
-            disabled={page >= data.pages}
-            className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            Proxima
-          </button>
+      {/* Content */}
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* List */}
+        <div className="min-w-0 flex-1 overflow-y-auto pr-1">
+          {!data ? (
+            <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+              Carregando...
+            </p>
+          ) : data.items.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-3">
+              <div
+                className="grid gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+                style={{
+                  color: "var(--acolhe-muted-fg)",
+                  gridTemplateColumns: "2fr 1fr 0.7fr 1fr 1fr 0.3fr",
+                }}
+              >
+                <div>Endereco</div>
+                <div>Microarea</div>
+                <div className="text-center">Moradores</div>
+                <div>Ultima visita</div>
+                <div>Status</div>
+                <div />
+              </div>
+
+              {data.items.map((d) => {
+                const status = (d.statusVisita ?? "atrasado") as keyof typeof STATUS_CONFIG;
+                const config = STATUS_CONFIG[status];
+                const isSelected = selectedId === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => setSelectedId(isSelected ? null : d.id)}
+                    className="grid w-full gap-4 rounded-lg px-4 py-3 text-left transition-all"
+                    style={{
+                      gridTemplateColumns: "2fr 1fr 0.7fr 1fr 1fr 0.3fr",
+                      border: `1px solid ${
+                        isSelected ? "var(--acolhe-primary)" : "var(--acolhe-border)"
+                      }`,
+                      backgroundColor: isSelected
+                        ? "var(--acolhe-primary-light)"
+                        : "var(--acolhe-card)",
+                      boxShadow: "var(--acolhe-shadow-sm)",
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className="truncate text-sm font-semibold"
+                        style={{ color: "var(--acolhe-fg)" }}
+                      >
+                        {d.logradouro}, {d.numero}
+                      </p>
+                      <p
+                        className="truncate text-xs"
+                        style={{ color: "var(--acolhe-muted-fg)" }}
+                      >
+                        {d.bairro}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {d.microarea ? (
+                        <>
+                          <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ backgroundColor: d.microarea.equipe.cor }}
+                          />
+                          <span
+                            className="text-sm font-medium"
+                            style={{ color: "var(--acolhe-fg)" }}
+                          >
+                            {d.microarea.codigo}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--acolhe-muted-fg)" }}>—</span>
+                      )}
+                    </div>
+
+                    <div
+                      className="flex items-center justify-center text-sm font-medium"
+                      style={{ color: "var(--acolhe-fg)" }}
+                    >
+                      {d._count.moradores}
+                    </div>
+
+                    <div className="text-sm" style={{ color: "var(--acolhe-fg)" }}>
+                      {d.ultimaVisita
+                        ? new Date(d.ultimaVisita).toLocaleDateString("pt-BR")
+                        : "Nunca"}
+                    </div>
+
+                    <div className="flex items-center">
+                      <span
+                        className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                        style={{ backgroundColor: config.bg, color: config.color }}
+                      >
+                        {config.label}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                      <ChevronRight
+                        size={16}
+                        style={{ color: "var(--acolhe-muted-fg)" }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {data && data.pages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="flex h-8 items-center gap-1 rounded-md px-3 text-xs disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--acolhe-card)",
+                  border: "1px solid var(--acolhe-border)",
+                  color: "var(--acolhe-fg)",
+                }}
+              >
+                <ChevronLeft size={14} /> Anterior
+              </button>
+              <span className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                {page} / {data.pages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
+                disabled={page >= data.pages}
+                className="flex h-8 items-center gap-1 rounded-md px-3 text-xs disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--acolhe-card)",
+                  border: "1px solid var(--acolhe-border)",
+                  color: "var(--acolhe-fg)",
+                }}
+              >
+                Proxima <ChevronRightArrow size={14} />
+              </button>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Drawer */}
+        {selectedId && detail && (
+          <aside
+            className="flex w-96 flex-col overflow-hidden rounded-xl"
+            style={{
+              backgroundColor: "var(--acolhe-card)",
+              border: "1px solid var(--acolhe-border)",
+              boxShadow: "var(--acolhe-shadow-md)",
+            }}
+          >
+            <div
+              className="sticky top-0 flex items-center justify-between px-5 py-4"
+              style={{ borderBottom: "1px solid var(--acolhe-border)" }}
+            >
+              <h2
+                className="text-base font-semibold"
+                style={{
+                  fontFamily: "var(--font-plus-jakarta), sans-serif",
+                  color: "var(--acolhe-fg)",
+                }}
+              >
+                Detalhes do domicilio
+              </h2>
+              <button
+                onClick={() => setSelectedId(null)}
+                className="rounded-md p-1 transition-colors"
+                style={{ color: "var(--acolhe-muted-fg)" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-6 overflow-y-auto px-5 py-4">
+              <button
+                className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: "var(--acolhe-primary)",
+                  boxShadow: "var(--acolhe-shadow-sm)",
+                }}
+              >
+                + Registrar visita
+              </button>
+
+              <Section label="Endereco">
+                <p className="text-sm font-medium" style={{ color: "var(--acolhe-fg)" }}>
+                  {detail.logradouro}, {detail.numero}
+                </p>
+                {detail.complemento && (
+                  <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {detail.complemento}
+                  </p>
+                )}
+                <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                  {detail.bairro}
+                  {detail.cep ? ` · CEP ${detail.cep}` : ""}
+                </p>
+              </Section>
+
+              {detail.microarea && (
+                <Section label="Microarea">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 rounded-full"
+                      style={{ backgroundColor: detail.microarea.equipe.cor }}
+                    />
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: "var(--acolhe-fg)" }}
+                    >
+                      {detail.microarea.codigo} · {detail.microarea.equipe.nome}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {detail.microarea.equipe.ubs.nome}
+                  </p>
+                </Section>
+              )}
+
+              <Section label={`Moradores (${detail.moradores.length})`}>
+                <div className="space-y-2">
+                  {detail.moradores.map((m) => {
+                    const idade = calcularIdade(m.nascimento);
+                    const condicoes = (Array.isArray(m.condicoes) ? m.condicoes : []) as string[];
+                    return (
+                      <div
+                        key={m.id}
+                        className="rounded-lg p-3"
+                        style={{ backgroundColor: "var(--acolhe-muted)" }}
+                      >
+                        <p className="text-sm font-semibold" style={{ color: "var(--acolhe-fg)" }}>
+                          {m.nome}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                          {idade} anos · {m.sexo === "FEMININO" ? "Feminino" : "Masculino"}
+                        </p>
+                        {condicoes.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {condicoes.map((c) => (
+                              <span
+                                key={c}
+                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                style={{
+                                  backgroundColor: "var(--acolhe-primary-light)",
+                                  color: "var(--acolhe-primary)",
+                                }}
+                              >
+                                {CONDICAO_LABEL[c] ?? c}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {detail.moradores.length === 0 && (
+                    <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                      Nenhum morador cadastrado
+                    </p>
+                  )}
+                </div>
+              </Section>
+
+              <Section label="Historico de visitas">
+                <div className="space-y-3">
+                  {detail.visitas.map((v) => {
+                    const displayKey = VISITA_STATUS_TO_DISPLAY[v.status] ?? "atrasado";
+                    const config = STATUS_CONFIG[displayKey];
+                    return (
+                      <div
+                        key={v.id}
+                        className="text-sm"
+                        style={{
+                          paddingLeft: 12,
+                          borderLeft: `2px solid ${config.color}`,
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold" style={{ color: "var(--acolhe-fg)" }}>
+                            {new Date(v.dataPrevista).toLocaleDateString("pt-BR")}
+                          </p>
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: config.bg, color: config.color }}
+                          >
+                            {VISITA_STATUS_LABEL[v.status] ?? v.status}
+                          </span>
+                        </div>
+                        <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                          por {v.acs.usuario.nome}
+                        </p>
+                        {v.observacoes && (
+                          <p
+                            className="mt-1 text-xs"
+                            style={{ color: "var(--acolhe-fg)" }}
+                          >
+                            {v.observacoes}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {detail.visitas.length === 0 && (
+                    <p className="text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+                      Nenhuma visita registrada
+                    </p>
+                  )}
+                </div>
+              </Section>
+            </div>
+          </aside>
+        )}
+      </div>
     </div>
   );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (_v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-9 rounded-lg px-3 text-sm outline-none"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        color: "var(--acolhe-fg)",
+      }}
+    >
+      {children}
+    </select>
+  );
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p
+        className="mb-2 text-xs font-semibold uppercase tracking-wider"
+        style={{ color: "var(--acolhe-muted-fg)" }}
+      >
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center">
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-xl"
+        style={{ backgroundColor: "var(--acolhe-primary-light)" }}
+      >
+        <Home size={32} style={{ color: "var(--acolhe-primary)" }} />
+      </div>
+      <h3
+        className="text-lg font-semibold"
+        style={{
+          fontFamily: "var(--font-plus-jakarta), sans-serif",
+          color: "var(--acolhe-fg)",
+        }}
+      >
+        Nenhum domicilio encontrado
+      </h3>
+      <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+        Ajuste os filtros ou importe um arquivo do e-SUS
+      </p>
+    </div>
+  );
+}
+
+function calcularIdade(nascimento: Date | string): number {
+  const nasc = new Date(nascimento);
+  const now = new Date();
+  let idade = now.getFullYear() - nasc.getFullYear();
+  const m = now.getMonth() - nasc.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < nasc.getDate())) {
+    idade--;
+  }
+  return idade;
 }

@@ -24,23 +24,52 @@ export const domicilioRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
       z.object({
+        prefeituraId: z.string().optional(),
+        equipeId: z.string().optional(),
         microareaId: z.string().optional(),
+        status: z.enum(["em_dia", "proximo_prazo", "atrasado", "all"]).default("all"),
         search: z.string().optional(),
         page: z.number().int().min(1).default(1),
         perPage: z.number().int().min(1).max(100).default(20),
       }),
     )
     .query(async ({ input }) => {
+      const microareaWhere: Record<string, unknown> = {};
+      if (input.equipeId) microareaWhere.equipeId = input.equipeId;
+      if (input.prefeituraId) {
+        microareaWhere.equipe = { ubs: { prefeituraId: input.prefeituraId } };
+      }
+
       const where: Record<string, unknown> = {};
       if (input.microareaId) where.microareaId = input.microareaId;
+      if (Object.keys(microareaWhere).length > 0) where.microarea = microareaWhere;
+
       if (input.search) {
         where.OR = [
           { logradouro: { contains: input.search, mode: "insensitive" } },
           { bairro: { contains: input.search, mode: "insensitive" } },
+          { moradores: { some: { nome: { contains: input.search, mode: "insensitive" } } } },
         ];
       }
 
-      const [items, total] = await Promise.all([
+      if (input.status !== "all") {
+        const now = new Date();
+        const days30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const days60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        if (input.status === "em_dia") {
+          where.ultimaVisita = { gte: days30 };
+        } else if (input.status === "proximo_prazo") {
+          where.ultimaVisita = { gte: days60, lt: days30 };
+        } else {
+          where.OR = [
+            ...((where.OR as unknown[] | undefined) ?? []),
+            { ultimaVisita: { lt: days60 } },
+            { ultimaVisita: null },
+          ];
+        }
+      }
+
+      const [rawItems, total] = await Promise.all([
         db.domicilio.findMany({
           where,
           orderBy: [{ logradouro: "asc" }, { numero: "asc" }],
@@ -49,8 +78,9 @@ export const domicilioRouter = createTRPCRouter({
           include: {
             microarea: {
               select: {
+                id: true,
                 codigo: true,
-                equipe: { select: { nome: true, cor: true } },
+                equipe: { select: { id: true, nome: true, cor: true } },
               },
             },
             _count: { select: { moradores: true, visitas: true } },
@@ -58,6 +88,11 @@ export const domicilioRouter = createTRPCRouter({
         }),
         db.domicilio.count({ where }),
       ]);
+
+      const items = rawItems.map((d) => {
+        const { status: statusVisita } = statusFromUltimaVisita(d.ultimaVisita);
+        return { ...d, statusVisita };
+      });
 
       return { items, total, pages: Math.ceil(total / input.perPage) };
     }),
