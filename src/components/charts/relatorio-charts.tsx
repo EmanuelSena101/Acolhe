@@ -14,21 +14,59 @@ import {
   CartesianGrid,
   LineChart,
   Line,
+  type TooltipProps,
 } from "recharts";
 
+const ACOLHE = {
+  primary: "#1B4F6B",
+  primaryLight: "#E8F1F6",
+  accent: "#D97706",
+  success: "#0F766E",
+  warning: "#B45309",
+  danger: "#9B1C1C",
+  fg: "#1C1A17",
+  mutedFg: "#6B6560",
+  border: "#DDD9D3",
+  card: "#FFFFFF",
+  bg: "#F7F5F2",
+};
+
+const TEAM_PALETTE = [
+  "#1B4F6B",
+  "#0F766E",
+  "#D97706",
+  "#7E22CE",
+  "#BE123C",
+  "#1D4ED8",
+  "#065F46",
+  "#92400E",
+  "#1E3A5F",
+  "#6D28D9",
+  "#0369A1",
+  "#B45309",
+];
+
 const STATUS_COLORS: Record<string, string> = {
-  REALIZADA: "#2ECC71",
-  PENDENTE: "#3498DB",
-  AUSENTE: "#F39C12",
-  RECUSADA: "#E74C3C",
-  CANCELADA: "#95A5A6",
+  REALIZADA: "#0F766E",
+  PENDENTE: "#1B4F6B",
+  AUSENTE: "#D97706",
+  RECUSADA: "#BE123C",
+  CANCELADA: "#9CA3AF",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  REALIZADA: "Realizada",
+  PENDENTE: "Pendente",
+  AUSENTE: "Ausente",
+  RECUSADA: "Recusada",
+  CANCELADA: "Cancelada",
 };
 
 const COND_COLORS: Record<string, string> = {
-  HIPERTENSO: "#E74C3C",
-  DIABETICO: "#F39C12",
-  GESTANTE: "#9B59B6",
-  SAUDAVEL: "#2ECC71",
+  HIPERTENSO: "#BE123C",
+  DIABETICO: "#7E22CE",
+  GESTANTE: "#0F766E",
+  SAUDAVEL: "#1B4F6B",
 };
 
 const COND_LABELS: Record<string, string> = {
@@ -46,15 +84,67 @@ interface ChartCardProps {
 
 function ChartCard({ title, description, children }: ChartCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <div
+      className="rounded-xl p-5"
+      style={{
+        backgroundColor: ACOLHE.card,
+        border: `1px solid ${ACOLHE.border}`,
+        boxShadow: "0 1px 2px 0 rgb(28 26 23 / 0.06)",
+      }}
+    >
       <div className="mb-4">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        {description && <p className="mt-0.5 text-xs text-gray-500">{description}</p>}
+        <h3
+          className="text-sm font-semibold"
+          style={{ fontFamily: "var(--font-plus-jakarta), sans-serif", color: ACOLHE.fg }}
+        >
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-0.5 text-xs" style={{ color: ACOLHE.mutedFg }}>
+            {description}
+          </p>
+        )}
       </div>
-      <div className="h-[260px] w-full">{children}</div>
+      <div className="h-[280px] w-full">{children}</div>
     </div>
   );
 }
+
+function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div
+      className="rounded-lg px-3 py-2 text-xs shadow-lg"
+      style={{
+        backgroundColor: ACOLHE.card,
+        border: `1px solid ${ACOLHE.border}`,
+        boxShadow: "0 8px 24px rgb(28 26 23 / 0.12)",
+      }}
+    >
+      {label && (
+        <p className="mb-1 font-semibold" style={{ color: ACOLHE.fg }}>
+          {label}
+        </p>
+      )}
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ backgroundColor: p.color }}
+          />
+          <span style={{ color: ACOLHE.mutedFg }}>{p.name}:</span>
+          <span className="font-semibold" style={{ color: ACOLHE.fg }}>
+            {p.value}
+            {String(p.name).toLowerCase().includes("cobertura") ? "%" : ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const AXIS_STYLE = { fontSize: 11, fill: ACOLHE.mutedFg };
+const GRID_STROKE = ACOLHE.border;
 
 interface StatusVisitasChartProps {
   data: { status: string; total: number }[];
@@ -62,27 +152,44 @@ interface StatusVisitasChartProps {
 
 export function StatusVisitasChart({ data }: StatusVisitasChartProps) {
   const total = data.reduce((s, d) => s + d.total, 0);
-  if (total === 0) return <ChartCard title="Status das visitas">Sem dados no periodo</ChartCard>;
+  if (total === 0)
+    return (
+      <ChartCard title="Status das visitas">
+        <p className="text-sm" style={{ color: ACOLHE.mutedFg }}>
+          Sem dados no periodo
+        </p>
+      </ChartCard>
+    );
+
+  const labeled = data.map((d) => ({
+    ...d,
+    label: STATUS_LABELS[d.status] ?? d.status,
+  }));
+
   return (
     <ChartCard title="Status das visitas" description={`${total} visitas no periodo`}>
       <ResponsiveContainer>
         <PieChart>
           <Pie
-            data={data}
+            data={labeled}
             dataKey="total"
-            nameKey="status"
+            nameKey="label"
             cx="50%"
             cy="50%"
-            outerRadius={90}
-            label={(entry: { status: string; total: number }) =>
-              `${entry.status} (${entry.total})`
-            }
+            outerRadius={95}
+            paddingAngle={2}
+            stroke={ACOLHE.bg}
+            strokeWidth={3}
           >
-            {data.map((entry) => (
-              <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? "#888"} />
+            {labeled.map((entry) => (
+              <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? ACOLHE.mutedFg} />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: ACOLHE.mutedFg }}
+            iconType="circle"
+          />
         </PieChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -95,7 +202,14 @@ interface CondicoesChartProps {
 
 export function CondicoesChart({ data }: CondicoesChartProps) {
   const total = data.reduce((s, d) => s + d.total, 0);
-  if (total === 0) return <ChartCard title="Condicoes de saude">Sem moradores cadastrados</ChartCard>;
+  if (total === 0)
+    return (
+      <ChartCard title="Condicoes de saude">
+        <p className="text-sm" style={{ color: ACOLHE.mutedFg }}>
+          Sem moradores cadastrados
+        </p>
+      </ChartCard>
+    );
   const labeled = data.map((d) => ({ ...d, label: COND_LABELS[d.nome] ?? d.nome }));
   return (
     <ChartCard title="Condicoes de saude" description="Distribuicao entre moradores ativos">
@@ -107,15 +221,21 @@ export function CondicoesChart({ data }: CondicoesChartProps) {
             nameKey="label"
             cx="50%"
             cy="50%"
-            innerRadius={45}
-            outerRadius={90}
+            innerRadius={55}
+            outerRadius={95}
+            paddingAngle={2}
+            stroke={ACOLHE.bg}
+            strokeWidth={3}
           >
             {labeled.map((entry) => (
-              <Cell key={entry.nome} fill={COND_COLORS[entry.nome] ?? "#888"} />
+              <Cell key={entry.nome} fill={COND_COLORS[entry.nome] ?? ACOLHE.mutedFg} />
             ))}
           </Pie>
-          <Tooltip />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: ACOLHE.mutedFg }}
+            iconType="circle"
+          />
         </PieChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -128,16 +248,28 @@ interface CoberturaPorUbsChartProps {
 
 export function CoberturaPorUbsChart({ data }: CoberturaPorUbsChartProps) {
   if (data.length === 0)
-    return <ChartCard title="Cobertura por UBS">Sem UBS cadastrada</ChartCard>;
+    return (
+      <ChartCard title="Cobertura por UBS">
+        <p className="text-sm" style={{ color: ACOLHE.mutedFg }}>
+          Sem UBS cadastrada
+        </p>
+      </ChartCard>
+    );
   return (
     <ChartCard title="Cobertura por UBS" description="% de domicilios visitados no mes">
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ left: 40, right: 16 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" domain={[0, 100]} unit="%" />
-          <YAxis type="category" dataKey="ubs" width={140} tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(v: number) => `${v}%`} />
-          <Bar dataKey="cobertura" fill="#1d4ed8" radius={[0, 4, 4, 0]} />
+        <BarChart data={data} layout="vertical" margin={{ left: 40, right: 16, top: 8, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+          <XAxis type="number" domain={[0, 100]} unit="%" tick={AXIS_STYLE} stroke={GRID_STROKE} />
+          <YAxis
+            type="category"
+            dataKey="ubs"
+            width={140}
+            tick={AXIS_STYLE}
+            stroke={GRID_STROKE}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: ACOLHE.primaryLight }} />
+          <Bar dataKey="cobertura" fill={ACOLHE.primary} radius={[0, 6, 6, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -150,23 +282,34 @@ interface ProdutividadeAcsChartProps {
 
 export function ProdutividadeAcsChart({ data }: ProdutividadeAcsChartProps) {
   if (data.length === 0)
-    return <ChartCard title="Produtividade ACS">Sem ACS no periodo</ChartCard>;
+    return (
+      <ChartCard title="Produtividade ACS">
+        <p className="text-sm" style={{ color: ACOLHE.mutedFg }}>
+          Sem ACS no periodo
+        </p>
+      </ChartCard>
+    );
   const top = [...data].sort((a, b) => b.realizadas - a.realizadas).slice(0, 10);
   return (
     <ChartCard title="Produtividade por ACS" description="Visitas realizadas (top 10)">
       <ResponsiveContainer>
-        <BarChart data={top} margin={{ bottom: 60, left: 8, right: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" />
+        <BarChart data={top} margin={{ bottom: 60, left: 8, right: 8, top: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
           <XAxis
             dataKey="acs"
             angle={-30}
             textAnchor="end"
             interval={0}
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: 10, fill: ACOLHE.mutedFg }}
+            stroke={GRID_STROKE}
           />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Bar dataKey="realizadas" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+          <YAxis allowDecimals={false} tick={AXIS_STYLE} stroke={GRID_STROKE} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: ACOLHE.primaryLight }} />
+          <Bar dataKey="realizadas" radius={[6, 6, 0, 0]}>
+            {top.map((_, i) => (
+              <Cell key={i} fill={TEAM_PALETTE[i % TEAM_PALETTE.length]} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -179,7 +322,13 @@ interface VisitasPorDiaChartProps {
 
 export function VisitasPorDiaChart({ data }: VisitasPorDiaChartProps) {
   if (data.length === 0)
-    return <ChartCard title="Visitas por dia">Sem visitas nos ultimos 30 dias</ChartCard>;
+    return (
+      <ChartCard title="Visitas por dia">
+        <p className="text-sm" style={{ color: ACOLHE.mutedFg }}>
+          Sem visitas nos ultimos 30 dias
+        </p>
+      </ChartCard>
+    );
   const formatted = data.map((d) => ({
     ...d,
     label: new Date(d.dia).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
@@ -187,18 +336,25 @@ export function VisitasPorDiaChart({ data }: VisitasPorDiaChartProps) {
   return (
     <ChartCard title="Visitas por dia" description="Realizadas nos ultimos 30 dias">
       <ResponsiveContainer>
-        <LineChart data={formatted} margin={{ left: 8, right: 16 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
+        <LineChart data={formatted} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+          <defs>
+            <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={ACOLHE.primary} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={ACOLHE.primary} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: ACOLHE.mutedFg }} stroke={GRID_STROKE} />
+          <YAxis allowDecimals={false} tick={AXIS_STYLE} stroke={GRID_STROKE} />
+          <Tooltip content={<CustomTooltip />} />
           <Line
             type="monotone"
             dataKey="total"
-            stroke="#059669"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
+            stroke={ACOLHE.primary}
+            strokeWidth={2.5}
+            dot={{ r: 3, fill: ACOLHE.primary, strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: ACOLHE.primary, stroke: ACOLHE.card, strokeWidth: 2 }}
+            fill="url(#lineGradient)"
           />
         </LineChart>
       </ResponsiveContainer>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Download, FileText } from "lucide-react";
+import { BarChart3, Download, FileText, AlertTriangle, MapPin } from "lucide-react";
 import {
   StatusVisitasChart,
   CondicoesChart,
@@ -14,6 +14,7 @@ import {
 export default function RelatoriosPage() {
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
   const prefeituraId = prefeituras?.[0]?.id;
+  const prefeituraNome = prefeituras?.[0]?.nome;
 
   const [periodo, setPeriodo] = useState(() => {
     const now = new Date();
@@ -111,7 +112,7 @@ export default function RelatoriosPage() {
         ["Visitas Atrasadas", String(atrasadas.total)],
       ],
       theme: "grid",
-      headStyles: { fillColor: [30, 58, 138] },
+      headStyles: { fillColor: [27, 79, 107] },
     });
 
     const finalY =
@@ -134,7 +135,7 @@ export default function RelatoriosPage() {
             new Date(v.dataPrevista).toLocaleDateString("pt-BR"),
           ]),
         theme: "grid",
-        headStyles: { fillColor: [30, 58, 138] },
+        headStyles: { fillColor: [27, 79, 107] },
       });
     }
 
@@ -143,40 +144,77 @@ export default function RelatoriosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-center gap-3">
-          <BarChart3 className="h-7 w-7 text-blue-700" />
-          <h1 className="text-2xl font-bold text-gray-900">Relatorios</h1>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--acolhe-primary-light)" }}
+          >
+            <BarChart3 size={20} style={{ color: "var(--acolhe-primary)" }} />
+          </div>
+          <div>
+            <h1
+              className="text-2xl font-bold leading-tight"
+              style={{
+                fontFamily: "var(--font-plus-jakarta), sans-serif",
+                color: "var(--acolhe-fg)",
+              }}
+            >
+              Relatorios
+            </h1>
+            <p className="text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
+              {prefeituraNome ?? "Prefeitura"}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={exportCSV}
             disabled={!cobertura}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--acolhe-success)",
+              color: "#FFFFFF",
+              boxShadow: "var(--acolhe-shadow-sm)",
+            }}
           >
-            <Download className="h-4 w-4" />
+            <Download size={15} />
             CSV
           </button>
           <button
             onClick={exportPDF}
             disabled={!cobertura}
-            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--acolhe-primary)",
+              color: "#FFFFFF",
+              boxShadow: "var(--acolhe-shadow-sm)",
+            }}
           >
-            <FileText className="h-4 w-4" />
+            <FileText size={15} />
             PDF
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700">Periodo:</label>
+      {/* Período selector */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium" style={{ color: "var(--acolhe-fg)" }}>
+          Periodo:
+        </label>
         <select
           value={`${periodo.mes}-${periodo.ano}`}
           onChange={(e) => {
             const [m, a] = e.target.value.split("-").map(Number);
             setPeriodo({ mes: m, ano: a });
           }}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="h-9 rounded-lg px-3 text-sm outline-none"
+          style={{
+            backgroundColor: "var(--acolhe-card)",
+            border: "1px solid var(--acolhe-border)",
+            color: "var(--acolhe-fg)",
+          }}
         >
           {meses.map((m) => (
             <option key={`${m.mes}-${m.ano}`} value={`${m.mes}-${m.ano}`}>
@@ -189,39 +227,37 @@ export default function RelatoriosPage() {
         </select>
       </div>
 
+      {/* KPI cards */}
       {cobertura && (
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Total Domicilios</p>
-            <p className="text-2xl font-bold text-gray-900">{cobertura.totalDomicilios}</p>
-          </div>
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Visitados no Mes</p>
-            <p className="text-2xl font-bold text-blue-700">{cobertura.visitadosNoMes}</p>
-          </div>
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Cobertura</p>
-            <p className="text-2xl font-bold text-green-700">{cobertura.cobertura}%</p>
-            <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
-              <div
-                className="h-2 rounded-full bg-green-500"
-                style={{ width: `${Math.min(cobertura.cobertura, 100)}%` }}
-              />
-            </div>
-          </div>
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">ACS Ativos</p>
-            <p className="text-2xl font-bold text-purple-700">
-              {cobertura.acsAtivos}/{cobertura.totalAcs}
-            </p>
-          </div>
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Visitas Atrasadas</p>
-            <p className="text-2xl font-bold text-red-700">{atrasadas?.total ?? "—"}</p>
-          </div>
+          <KpiBox label="Total Domicilios" value={cobertura.totalDomicilios} />
+          <KpiBox
+            label="Visitados no Mes"
+            value={cobertura.visitadosNoMes}
+            valueColor="var(--acolhe-success)"
+          />
+          <KpiBox
+            label="Cobertura"
+            value={`${cobertura.cobertura}%`}
+            valueColor="var(--acolhe-primary)"
+            progress={cobertura.cobertura}
+          />
+          <KpiBox
+            label="ACS Ativos"
+            value={`${cobertura.acsAtivos}/${cobertura.totalAcs}`}
+            valueColor="var(--acolhe-primary)"
+          />
+          <KpiBox
+            label="Visitas Atrasadas"
+            value={atrasadas?.total ?? "—"}
+            valueColor={
+              atrasadas && atrasadas.total > 0 ? "var(--acolhe-danger)" : "var(--acolhe-fg)"
+            }
+          />
         </div>
       )}
 
+      {/* Charts */}
       {charts && (
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
@@ -236,67 +272,181 @@ export default function RelatoriosPage() {
         </div>
       )}
 
+      {/* UBS table */}
       {ubsList && ubsList.length > 0 && (
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">UBS da Prefeitura</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 font-medium text-gray-700">Nome</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">CNES</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Endereco</th>
+        <SectionCard
+          title="UBS da Prefeitura"
+          icon={<MapPin size={18} style={{ color: "var(--acolhe-primary)" }} />}
+        >
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--acolhe-border)" }}>
+                <ColHead>Nome</ColHead>
+                <ColHead>CNES</ColHead>
+                <ColHead>Endereco</ColHead>
+              </tr>
+            </thead>
+            <tbody>
+              {ubsList.map((ubs) => (
+                <tr
+                  key={ubs.id}
+                  className="transition-colors"
+                  style={{ borderBottom: "1px solid var(--acolhe-border)" }}
+                >
+                  <td className="px-4 py-3 font-medium" style={{ color: "var(--acolhe-fg)" }}>
+                    {ubs.nome}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {ubs.cnes}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {ubs.endereco ?? "—"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {ubsList.map((ubs) => (
-                  <tr key={ubs.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{ubs.nome}</td>
-                    <td className="px-4 py-3 text-gray-600">{ubs.cnes}</td>
-                    <td className="px-4 py-3 text-gray-600">{ubs.endereco ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
       )}
 
+      {/* Visitas atrasadas table */}
       {atrasadas && atrasadas.visitas.length > 0 && (
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            Visitas Atrasadas ({atrasadas.total})
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 font-medium text-gray-700">Endereco</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Microarea</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">ACS</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Data Prevista</th>
+        <SectionCard
+          title={`Visitas Atrasadas (${atrasadas.total})`}
+          icon={<AlertTriangle size={18} style={{ color: "var(--acolhe-danger)" }} />}
+        >
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--acolhe-border)" }}>
+                <ColHead>Endereco</ColHead>
+                <ColHead>Microarea</ColHead>
+                <ColHead>ACS</ColHead>
+                <ColHead>Data Prevista</ColHead>
+              </tr>
+            </thead>
+            <tbody>
+              {atrasadas.visitas.map((v) => (
+                <tr
+                  key={v.id}
+                  style={{ borderBottom: "1px solid var(--acolhe-border)" }}
+                >
+                  <td className="px-4 py-3 font-medium" style={{ color: "var(--acolhe-fg)" }}>
+                    {v.domicilio.logradouro} {v.domicilio.numero}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {v.domicilio.microarea?.codigo ?? "—"}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "var(--acolhe-muted-fg)" }}>
+                    {v.acs.usuario.nome}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "var(--acolhe-danger)" }}>
+                    {new Date(v.dataPrevista).toLocaleDateString("pt-BR")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {atrasadas.visitas.map((v) => (
-                  <tr key={v.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">
-                      {v.domicilio.logradouro} {v.domicilio.numero}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {v.domicilio.microarea?.codigo ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{v.acs.usuario.nome}</td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {new Date(v.dataPrevista).toLocaleDateString("pt-BR")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+function KpiBox({
+  label,
+  value,
+  valueColor = "var(--acolhe-fg)",
+  progress,
+}: {
+  label: string;
+  value: number | string;
+  valueColor?: string;
+  progress?: number;
+}) {
+  return (
+    <div
+      className="rounded-xl p-4"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        boxShadow: "var(--acolhe-shadow-sm)",
+      }}
+    >
+      <p className="text-xs font-medium" style={{ color: "var(--acolhe-muted-fg)" }}>
+        {label}
+      </p>
+      <p
+        className="mt-1 text-2xl font-bold"
+        style={{
+          fontFamily: "var(--font-plus-jakarta), sans-serif",
+          color: valueColor,
+        }}
+      >
+        {value}
+      </p>
+      {typeof progress === "number" && (
+        <div
+          className="mt-2 h-1.5 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: "var(--acolhe-muted)" }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.min(progress, 100)}%`,
+              backgroundColor: "var(--acolhe-success)",
+            }}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="overflow-hidden rounded-xl"
+      style={{
+        backgroundColor: "var(--acolhe-card)",
+        border: "1px solid var(--acolhe-border)",
+        boxShadow: "var(--acolhe-shadow-sm)",
+      }}
+    >
+      <div
+        className="flex items-center gap-2 px-5 py-4"
+        style={{ borderBottom: "1px solid var(--acolhe-border)" }}
+      >
+        {icon}
+        <h2
+          className="text-base font-semibold"
+          style={{
+            fontFamily: "var(--font-plus-jakarta), sans-serif",
+            color: "var(--acolhe-fg)",
+          }}
+        >
+          {title}
+        </h2>
+      </div>
+      <div className="overflow-x-auto">{children}</div>
+    </div>
+  );
+}
+
+function ColHead({ children }: { children: React.ReactNode }) {
+  return (
+    <th
+      className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+      style={{ color: "var(--acolhe-muted-fg)" }}
+    >
+      {children}
+    </th>
   );
 }

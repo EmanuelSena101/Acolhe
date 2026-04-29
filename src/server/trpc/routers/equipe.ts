@@ -13,6 +13,22 @@ export const equipeRouter = createTRPCRouter({
     });
   }),
 
+  listByPrefeitura: protectedProcedure
+    .input(z.object({ prefeituraId: z.string() }))
+    .query(async ({ input }) => {
+      return db.equipeESF.findMany({
+        where: { ubs: { prefeituraId: input.prefeituraId }, ativa: true },
+        orderBy: [{ ubs: { nome: "asc" } }, { nome: "asc" }],
+        select: {
+          id: true,
+          nome: true,
+          cor: true,
+          ine: true,
+          ubs: { select: { id: true, nome: true } },
+        },
+      });
+    }),
+
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
     return db.equipeESF.findUniqueOrThrow({
       where: { id: input.id },

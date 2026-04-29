@@ -4,9 +4,9 @@ import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 import { rowsToFeatureCollection } from "@/lib/geo";
 
-const STATUS_COLOR_EM_DIA = "#2ECC71";
-const STATUS_COLOR_PROXIMO = "#F39C12";
-const STATUS_COLOR_ATRASADO = "#E74C3C";
+const STATUS_COLOR_EM_DIA = "#0F766E";
+const STATUS_COLOR_PROXIMO = "#D97706";
+const STATUS_COLOR_ATRASADO = "#BE123C";
 
 function statusFromUltimaVisita(ultimaVisita: Date | null): {
   status: "em_dia" | "proximo_prazo" | "atrasado";
