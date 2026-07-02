@@ -1,0 +1,54 @@
+# Stack do Acolhe para o Portainer — PREENCHIDO
+# Usa a imagem publicada no GitHub Container Registry (ghcr.io).
+#
+# >>> ÚNICO campo a editar: NEXTAUTH_URL (troque SEU_HOST pelo IP/domínio público do host) <<<
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: saudeterritorio
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saudeterritorio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/emanuelsena101/acolhe:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/saudeterritorio
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_URL: http://SEU_HOST:3000          # <<< TROCAR: IP ou domínio público do host
+      NEXTAUTH_SECRET: lt43mHdamNLgTuEDIPtZrDye
+      AUTH_TRUST_HOST: "true"
+      UPLOADS_DIR: ./public/uploads
+      MAX_UPLOAD_SIZE_MB: "20"
+      OSM_USER_AGENT: "Acolhe/1.0"
+      NODE_ENV: production
+
+volumes:
+  pgdata:
+  redisdata:
