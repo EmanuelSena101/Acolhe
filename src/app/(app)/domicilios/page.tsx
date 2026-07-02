@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight as ChevronRightArrow,
 } from "lucide-react";
+import { NovaVisitaModal } from "@/components/nova-visita-modal";
 
 const STATUS_CONFIG: Record<
   "em_dia" | "proximo_prazo" | "atrasado",
@@ -59,7 +60,9 @@ export default function DomiciliosPage() {
   );
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showVisita, setShowVisita] = useState(false);
 
+  const utils = trpc.useUtils();
   const { data: prefeituras } = trpc.prefeitura.list.useQuery();
   const prefeituraId = prefeituras?.[0]?.id;
 
@@ -388,6 +391,7 @@ export default function DomiciliosPage() {
 
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-4">
               <button
+                onClick={() => setShowVisita(true)}
                 className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{
                   backgroundColor: "var(--acolhe-primary)",
@@ -520,6 +524,25 @@ export default function DomiciliosPage() {
           </aside>
         )}
       </div>
+
+      {showVisita && detail && prefeituraId && (
+        <NovaVisitaModal
+          prefeituraId={prefeituraId}
+          lockedDomicilio={{
+            id: detail.id,
+            label: `${detail.logradouro}, ${detail.numero}${
+              detail.bairro ? ` · ${detail.bairro}` : ""
+            }`,
+            acsId: detail.microarea?.acsId ?? undefined,
+          }}
+          onClose={() => setShowVisita(false)}
+          onCreated={() => {
+            setShowVisita(false);
+            void utils.domicilio.getById.invalidate({ id: detail.id });
+            void utils.domicilio.list.invalidate();
+          }}
+        />
+      )}
     </div>
   );
 }

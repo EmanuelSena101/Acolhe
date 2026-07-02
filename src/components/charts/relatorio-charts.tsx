@@ -71,6 +71,7 @@ const COND_COLORS: Record<string, string> = {
   HIPERTENSO: "#BE123C",
   DIABETICO: "#7E22CE",
   GESTANTE: "#0F766E",
+  OUTROS: "#D97706",
   SAUDAVEL: "#1B4F6B",
 };
 
@@ -78,6 +79,7 @@ const COND_LABELS: Record<string, string> = {
   HIPERTENSO: "Hipertensos",
   DIABETICO: "Diabéticos",
   GESTANTE: "Gestantes",
+  OUTROS: "Outras condições",
   SAUDAVEL: "Sem condição crônica",
 };
 

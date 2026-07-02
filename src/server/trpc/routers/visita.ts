@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
+import { createAuditLog } from "../middlewares/audit";
 
 const STATUS_FILTER = z.enum([
   "PENDENTE",
@@ -18,11 +19,17 @@ function periodoToRange(periodo: "semana" | "mes" | "tres_meses" | "all"): {
 } {
   if (periodo === "all") return {};
   const now = new Date();
+  // "Este mes" = mes calendario corrente (alinhado com a tela de Relatorios),
+  // do dia 1 ao ultimo dia do mes — nao uma janela movel de 30 dias.
+  if (periodo === "mes") {
+    const dataInicio = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const dataFim = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { dataInicio, dataFim };
+  }
   const dataFim = new Date(now);
   dataFim.setDate(dataFim.getDate() + 30);
   const dataInicio = new Date(now);
   if (periodo === "semana") dataInicio.setDate(dataInicio.getDate() - 7);
-  else if (periodo === "mes") dataInicio.setDate(dataInicio.getDate() - 30);
   else dataInicio.setDate(dataInicio.getDate() - 90);
   return { dataInicio, dataFim };
 }
@@ -249,9 +256,9 @@ export const visitaRouter = createTRPCRouter({
         lngCheckin: z.number().min(-180).max(180).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      return db.$transaction(async (tx) => {
-        const visita = await tx.visita.create({ data: input });
+    .mutation(async ({ input, ctx }) => {
+      const visita = await db.$transaction(async (tx) => {
+        const criada = await tx.visita.create({ data: input });
 
         if (input.status === "REALIZADA" && input.dataRealizada) {
           await tx.domicilio.update({
@@ -260,8 +267,10 @@ export const visitaRouter = createTRPCRouter({
           });
         }
 
-        return visita;
+        return criada;
       });
+      await createAuditLog(ctx, { acao: "CREATE", entidade: "Visita", entidadeId: visita.id });
+      return visita;
     }),
 
   atualizar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS", "ACS"])
@@ -275,22 +284,29 @@ export const visitaRouter = createTRPCRouter({
         duracaoMin: z.number().int().min(1).max(480).optional(),
       }),
     )
-    .mutation(async ({ input: { id, ...data } }) => {
-      return db.$transaction(async (tx) => {
-        const visita = await tx.visita.update({
+    .mutation(async ({ input: { id, ...data }, ctx }) => {
+      const visita = await db.$transaction(async (tx) => {
+        const atualizada = await tx.visita.update({
           where: { id },
           data,
         });
 
         if (data.status === "REALIZADA" && data.dataRealizada) {
           await tx.domicilio.update({
-            where: { id: visita.domicilioId },
+            where: { id: atualizada.domicilioId },
             data: { ultimaVisita: data.dataRealizada },
           });
         }
 
-        return visita;
+        return atualizada;
       });
+      await createAuditLog(ctx, {
+        acao: "UPDATE",
+        entidade: "Visita",
+        entidadeId: id,
+        payload: { status: data.status },
+      });
+      return visita;
     }),
 
   checkin: rbacProcedure(["ACS"])
@@ -328,10 +344,12 @@ export const visitaRouter = createTRPCRouter({
 
   cancelar: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS"])
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return db.visita.update({
+    .mutation(async ({ input, ctx }) => {
+      const visita = await db.visita.update({
         where: { id: input.id },
         data: { status: "CANCELADA" },
       });
+      await createAuditLog(ctx, { acao: "CANCEL", entidade: "Visita", entidadeId: input.id });
+      return visita;
     }),
 });

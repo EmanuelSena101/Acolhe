@@ -206,16 +206,29 @@ export const relatoriosRouter = createTRPCRouter({
         HIPERTENSO: 0,
         DIABETICO: 0,
         GESTANTE: 0,
+        OUTROS: 0,
         SAUDAVEL: 0,
       };
+      // Os valores de `condicoes` sao gravados em formas variadas (ex:
+      // "hipertensao", "hipertenso", "HIPERTENSO", "diabetes", "diabetico").
+      // Normalizamos por substring, sem depender de casing/vocabulario exato.
+      function bucketCondicao(c: string): "HIPERTENSO" | "DIABETICO" | "GESTANTE" | "OUTROS" {
+        const k = c.toLowerCase();
+        if (k.includes("hipertens")) return "HIPERTENSO";
+        if (k.includes("diabet")) return "DIABETICO";
+        if (k.includes("gestante") || k.includes("gravid")) return "GESTANTE";
+        return "OUTROS";
+      }
       for (const m of moradores) {
-        const arr = Array.isArray(m.condicoes) ? (m.condicoes as string[]) : [];
+        const arr = Array.isArray(m.condicoes)
+          ? (m.condicoes as unknown[]).filter((x): x is string => typeof x === "string")
+          : [];
         if (arr.length === 0) {
           condCount.SAUDAVEL++;
         } else {
-          for (const c of arr) {
-            if (condCount[c] !== undefined) condCount[c]++;
-          }
+          // conta uma vez por bucket por morador (Set), consistente com SAUDAVEL
+          const buckets = new Set(arr.map(bucketCondicao));
+          buckets.forEach((b) => condCount[b]++);
         }
       }
       const condicoes = Object.entries(condCount).map(([nome, total]) => ({

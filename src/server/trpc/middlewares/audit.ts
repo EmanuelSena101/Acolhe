@@ -11,15 +11,20 @@ export async function createAuditLog(
     payload?: Prisma.InputJsonValue;
   },
 ) {
-  await db.auditLog.create({
-    data: {
-      usuarioId: ctx.session?.user?.id ?? null,
-      acao: data.acao,
-      entidade: data.entidade,
-      entidadeId: data.entidadeId,
-      payload: data.payload ?? undefined,
-      ip: ctx.ip,
-      userAgent: ctx.userAgent,
-    },
-  });
+  // Auditoria nunca deve derrubar a operacao principal: engole erros.
+  try {
+    await db.auditLog.create({
+      data: {
+        usuarioId: ctx.session?.user?.id ?? null,
+        acao: data.acao,
+        entidade: data.entidade,
+        entidadeId: data.entidadeId,
+        payload: data.payload ?? undefined,
+        ip: ctx.ip,
+        userAgent: ctx.userAgent,
+      },
+    });
+  } catch (err) {
+    console.error("Erro ao registrar audit log:", data.acao, data.entidade, err);
+  }
 }

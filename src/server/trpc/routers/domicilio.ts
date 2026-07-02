@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure, rbacProcedure } from "../trpc";
 import { db } from "@/server/db";
 import { rowsToFeatureCollection } from "@/lib/geo";
+import { createAuditLog } from "../middlewares/audit";
 
 const STATUS_COLOR_EM_DIA = "#0F766E";
 const STATUS_COLOR_PROXIMO = "#D97706";
@@ -178,6 +179,7 @@ export const domicilioRouter = createTRPCRouter({
           select: {
             id: true,
             codigo: true,
+            acsId: true,
             equipe: {
               select: {
                 id: true,
@@ -212,8 +214,14 @@ export const domicilioRouter = createTRPCRouter({
         tipo: z.enum(["CASA", "APARTAMENTO", "COMODO", "OUTRO"]).default("CASA"),
       }),
     )
-    .mutation(async ({ input }) => {
-      return db.domicilio.create({ data: input });
+    .mutation(async ({ input, ctx }) => {
+      const domicilio = await db.domicilio.create({ data: input });
+      await createAuditLog(ctx, {
+        acao: "CREATE",
+        entidade: "Domicilio",
+        entidadeId: domicilio.id,
+      });
+      return domicilio;
     }),
 
   update: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL", "GERENTE_UBS", "ACS"])
@@ -230,17 +238,21 @@ export const domicilioRouter = createTRPCRouter({
         fotoUrl: z.string().url().optional(),
       }),
     )
-    .mutation(async ({ input: { id, condicoesMoradia, ...rest } }) => {
+    .mutation(async ({ input: { id, condicoesMoradia, ...rest }, ctx }) => {
       const data: Prisma.DomicilioUpdateInput = { ...rest };
       if (condicoesMoradia !== undefined) {
         data.condicoesMoradia = condicoesMoradia as Prisma.InputJsonValue;
       }
-      return db.domicilio.update({ where: { id }, data });
+      const domicilio = await db.domicilio.update({ where: { id }, data });
+      await createAuditLog(ctx, { acao: "UPDATE", entidade: "Domicilio", entidadeId: id });
+      return domicilio;
     }),
 
   delete: rbacProcedure(["SUPERADMIN", "COORD_MUNICIPAL"])
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return db.domicilio.delete({ where: { id: input.id } });
+    .mutation(async ({ input, ctx }) => {
+      const domicilio = await db.domicilio.delete({ where: { id: input.id } });
+      await createAuditLog(ctx, { acao: "DELETE", entidade: "Domicilio", entidadeId: input.id });
+      return domicilio;
     }),
 });

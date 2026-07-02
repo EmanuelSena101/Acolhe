@@ -13,10 +13,20 @@ import {
   BarChart3,
   Shield,
   LogOut,
-  Menu,
-  X,
+  Plus,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04, delayChildren: 0.06 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -14 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 500, damping: 32 } },
+};
 
 interface NavItem {
   href: string;
@@ -99,11 +109,21 @@ export function Sidebar() {
   return (
     <>
       <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-md bg-white p-2 shadow-md lg:hidden"
-        aria-label="Abrir menu"
+        onClick={() => setMobileOpen((v) => !v)}
+        className={`fixed top-3 z-[60] flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition-[left] duration-300 ease-out lg:hidden ${
+          mobileOpen ? "left-[12.5rem]" : "left-4"
+        }`}
+        style={{ color: "var(--acolhe-primary)" }}
+        aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+        aria-expanded={mobileOpen}
       >
-        <Menu className="h-6 w-6" />
+        <motion.span
+          animate={{ rotate: mobileOpen ? 45 : 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="flex"
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        </motion.span>
       </button>
 
       <div
@@ -135,17 +155,16 @@ export function Sidebar() {
               Acolhe
             </span>
           </Link>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="text-white/70 hover:text-white lg:hidden"
-            aria-label="Fechar menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-0.5">
+          <motion.ul
+            className="space-y-0.5"
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            key={mobileOpen ? "open" : "closed"}
+          >
             {visibleItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -157,40 +176,36 @@ export function Sidebar() {
                       pathname.startsWith(other.href),
                   ));
               return (
-                <li key={item.href}>
+                <motion.li key={item.href} variants={itemVariants}>
                   <Link
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors"
-                    style={
-                      isActive
-                        ? {
-                            backgroundColor: "rgba(255,255,255,0.15)",
-                            color: "white",
-                            fontWeight: 500,
-                          }
-                        : { color: "rgba(232,241,246,0.65)" }
-                    }
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)";
-                        e.currentTarget.style.color = "rgba(232,241,246,0.9)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                        e.currentTarget.style.color = "rgba(232,241,246,0.65)";
-                      }
+                    className="group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm"
+                    style={{
+                      color: isActive ? "white" : "rgba(232,241,246,0.65)",
+                      fontWeight: isActive ? 500 : 400,
                     }}
                   >
-                    {item.icon}
-                    {item.label}
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active-pill"
+                        className="absolute inset-0 rounded-md"
+                        style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                        transition={{ type: "spring", stiffness: 500, damping: 36 }}
+                      />
+                    )}
+                    {!isActive && (
+                      <span className="absolute inset-0 rounded-md bg-white/0 transition-colors duration-200 group-hover:bg-white/[0.08]" />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2.5 transition-transform duration-200 group-hover:translate-x-0.5">
+                      {item.icon}
+                      {item.label}
+                    </span>
                   </Link>
-                </li>
+                </motion.li>
               );
             })}
-          </ul>
+          </motion.ul>
         </nav>
 
         <div className="p-3" style={{ borderTop: `1px solid ${SIDEBAR_BORDER}` }}>

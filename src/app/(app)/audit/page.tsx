@@ -3,6 +3,58 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Shield } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterBar, FilterField, FilterInput } from "@/components/ui/filter-bar";
+import { ResponsiveTable, type Column } from "@/components/ui/responsive-table";
+
+type AuditItem = {
+  id: string;
+  criadoEm: string | Date;
+  usuario?: { nome: string } | null;
+  acao: string;
+  entidade: string;
+  entidadeId?: string | null;
+};
+
+const columns: Column<AuditItem>[] = [
+  {
+    key: "data",
+    header: "Data",
+    render: (item) => new Date(item.criadoEm).toLocaleString("pt-BR"),
+  },
+  {
+    key: "usuario",
+    header: "Usuario",
+    primary: true,
+    render: (item) => item.usuario?.nome ?? "Sistema",
+  },
+  {
+    key: "acao",
+    header: "Acao",
+    render: (item) => (
+      <span
+        className="inline-block rounded-full px-2 py-1 text-xs font-medium"
+        style={{ backgroundColor: "var(--acolhe-primary-light)", color: "var(--acolhe-primary)" }}
+      >
+        {item.acao}
+      </span>
+    ),
+  },
+  {
+    key: "entidade",
+    header: "Entidade",
+    render: (item) => item.entidade,
+  },
+  {
+    key: "id",
+    header: "ID",
+    render: (item) => (
+      <span className="font-mono text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
+        {item.entidadeId ?? "—"}
+      </span>
+    ),
+  },
+];
 
 export default function AuditPage() {
   const [filtroEntidade, setFiltroEntidade] = useState<string>("");
@@ -16,74 +68,45 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="h-7 w-7 text-blue-700" />
-        <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-      </div>
+      <PageHeader
+        title="Audit Log"
+        icon={<Shield className="h-7 w-7" style={{ color: "var(--acolhe-primary)" }} />}
+      />
 
-      <div className="flex gap-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Entidade</label>
-          <input
-            type="text"
+      <FilterBar>
+        <FilterField label="Entidade">
+          <FilterInput
             value={filtroEntidade}
             onChange={(e) => setFiltroEntidade(e.target.value)}
             placeholder="Ex: ImportJob, Visita"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Acao</label>
-          <input
-            type="text"
+        </FilterField>
+        <FilterField label="Acao">
+          <FilterInput
             value={filtroAcao}
             onChange={(e) => setFiltroAcao(e.target.value)}
             placeholder="Ex: CREATE, UPDATE"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-        </div>
-      </div>
+        </FilterField>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        {data && data.items.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 font-medium text-gray-700">Data</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Usuario</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Acao</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">Entidade</th>
-                  <th className="px-4 py-3 font-medium text-gray-700">ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((item) => (
-                  <tr key={item.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600">
-                      {new Date(item.criadoEm).toLocaleString("pt-BR")}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{item.usuario?.nome ?? "Sistema"}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                        {item.acao}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{item.entidade}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                      {item.entidadeId ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">Nenhum registro de audit log encontrado.</p>
-        )}
+      <div
+        className="rounded-xl p-3 sm:p-5"
+        style={{
+          backgroundColor: "var(--acolhe-card)",
+          border: "1px solid var(--acolhe-border)",
+          boxShadow: "var(--acolhe-shadow-sm)",
+        }}
+      >
+        <ResponsiveTable
+          columns={columns}
+          rows={(data?.items ?? []) as AuditItem[]}
+          keyExtractor={(item) => item.id}
+          empty="Nenhum registro de audit log encontrado."
+        />
 
         {data?.nextCursor && (
-          <p className="mt-4 text-center text-sm text-gray-500">
+          <p className="mt-4 text-center text-sm" style={{ color: "var(--acolhe-muted-fg)" }}>
             Mostrando primeiros {data.items.length} registros
           </p>
         )}

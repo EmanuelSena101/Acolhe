@@ -40,10 +40,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "var(--acolhe-bg)" }}>
+    <div className="flex min-h-screen" style={{ backgroundColor: "var(--acolhe-bg)" }}>
       {/* Painel esquerdo — marca e contexto institucional */}
       <div
-        className="hidden lg:flex lg:w-[52%] flex-col justify-between p-12 relative overflow-hidden"
+        className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[52%]"
         style={{ backgroundColor: "var(--acolhe-primary)" }}
       >
         <div
@@ -64,9 +64,9 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="relative z-10 space-y-6 max-w-md">
+        <div className="relative z-10 max-w-md space-y-6">
           <div
-            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full"
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
             style={{
               backgroundColor: "rgba(255,255,255,0.12)",
               color: "rgba(255,255,255,0.9)",
@@ -76,14 +76,14 @@ export default function LoginPage() {
             <span>Plataforma oficial da Secretaria Municipal de Saude</span>
           </div>
           <h1
-            className="text-4xl font-bold leading-tight text-balance text-white"
+            className="text-balance text-4xl font-bold leading-tight text-white"
             style={{ fontFamily: "var(--font-plus-jakarta), sans-serif" }}
           >
             Cuidar de quem cuida comeca aqui
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(232,241,246,0.75)" }}>
-            Apoio as equipes de Atencao Basica na gestao de visitas domiciliares,
-            territorios e indicadores de saude da familia.
+            Apoio as equipes de Atencao Basica na gestao de visitas domiciliares, territorios e
+            indicadores de saude da familia.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export default function LoginPage() {
             {["E1", "E2", "E3", "E4"].map((label, i) => (
               <div
                 key={i}
-                className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-[10px] font-bold text-white"
                 style={{
                   backgroundColor: TEAM_COLORS[i],
                   borderColor: "var(--acolhe-primary)",
@@ -111,8 +111,8 @@ export default function LoginPage() {
       </div>
 
       {/* Painel direito — formulario */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-12">
-        <div className="flex lg:hidden items-center gap-2 mb-10">
+      <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+        <div className="mb-10 flex items-center gap-2 lg:hidden">
           <AcolheLogo size={28} dark />
           <span
             className="text-xl font-semibold"
@@ -125,10 +125,10 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="w-full max-w-sm mx-auto">
+        <div className="mx-auto w-full max-w-sm">
           <div className="mb-8 space-y-1">
             <h2
-              className="text-2xl font-bold text-balance"
+              className="text-balance text-2xl font-bold"
               style={{
                 fontFamily: "var(--font-plus-jakarta), sans-serif",
                 color: "var(--acolhe-fg)",
@@ -141,40 +141,42 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            disabled={!govbrEnabled}
-            title={!govbrEnabled ? "Configurar credenciais gov.br no .env" : "Entrar com gov.br"}
-            onClick={async () => {
-              if (!govbrEnabled) return;
-              const { signIn } = await import("next-auth/react");
-              void signIn("govbr", { callbackUrl: "/dashboard" });
-            }}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] mb-6 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              backgroundColor: "#1351B4",
-              color: "white",
-              boxShadow: "var(--acolhe-shadow-md)",
-            }}
-            aria-label="Entrar com login gov.br"
-          >
-            <GovBrIcon />
-            Entrar com{" "}
-            <span style={{ fontFamily: "monospace", letterSpacing: "0.02em" }}>gov.br</span>
-          </button>
+          {govbrEnabled && (
+            <>
+              <button
+                type="button"
+                title="Entrar com gov.br"
+                onClick={async () => {
+                  const { signIn } = await import("next-auth/react");
+                  void signIn("govbr", { callbackUrl: "/dashboard" });
+                }}
+                className="mb-6 flex w-full items-center justify-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: "#1351B4",
+                  color: "white",
+                  boxShadow: "var(--acolhe-shadow-md)",
+                }}
+                aria-label="Entrar com login gov.br"
+              >
+                <GovBrIcon />
+                Entrar com{" "}
+                <span style={{ fontFamily: "monospace", letterSpacing: "0.02em" }}>gov.br</span>
+              </button>
 
-          <div className="relative flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px" style={{ backgroundColor: "var(--acolhe-border)" }} />
-            <span className="text-xs font-medium" style={{ color: "var(--acolhe-muted-fg)" }}>
-              ou use e-mail e senha
-            </span>
-            <div className="flex-1 h-px" style={{ backgroundColor: "var(--acolhe-border)" }} />
-          </div>
+              <div className="relative mb-6 flex items-center gap-3">
+                <div className="h-px flex-1" style={{ backgroundColor: "var(--acolhe-border)" }} />
+                <span className="text-xs font-medium" style={{ color: "var(--acolhe-muted-fg)" }}>
+                  ou use e-mail e senha
+                </span>
+                <div className="h-px flex-1" style={{ backgroundColor: "var(--acolhe-border)" }} />
+              </div>
+            </>
+          )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
               <div
-                className="flex items-start gap-2 p-3 rounded-lg text-sm"
+                className="flex items-start gap-2 rounded-lg p-3 text-sm"
                 style={{
                   backgroundColor: "var(--acolhe-danger-light)",
                   color: "var(--acolhe-danger)",
@@ -203,7 +205,7 @@ export default function LoginPage() {
                 placeholder="nome@saude.municipio.gov.br"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-lg text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                className="h-11 w-full rounded-lg px-3.5 text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
                 style={{
                   border: "1px solid var(--acolhe-border)",
                   backgroundColor: "var(--acolhe-card)",
@@ -238,7 +240,7 @@ export default function LoginPage() {
                   placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 px-3.5 pr-11 rounded-lg text-sm outline-none transition-all"
+                  className="h-11 w-full rounded-lg px-3.5 pr-11 text-sm outline-none transition-all"
                   style={{
                     border: "1px solid var(--acolhe-border)",
                     backgroundColor: "var(--acolhe-card)",
@@ -260,7 +262,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 backgroundColor: "var(--acolhe-primary)",
                 color: "var(--acolhe-primary-foreground)",
@@ -273,7 +275,7 @@ export default function LoginPage() {
           </form>
 
           <p
-            className="mt-6 text-xs text-center leading-relaxed"
+            className="mt-6 text-center text-xs leading-relaxed"
             style={{ color: "var(--acolhe-muted-fg)" }}
           >
             Acesso restrito a profissionais de saude autorizados pela Secretaria Municipal.
