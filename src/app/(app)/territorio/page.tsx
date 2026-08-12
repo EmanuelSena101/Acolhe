@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MapView } from "@/components/map/map-view";
+import { MapView } from "@/components/map/map-view-lazy";
 import { trpc } from "@/lib/trpc";
 import { X, Map as MapIcon, Users } from "lucide-react";
 

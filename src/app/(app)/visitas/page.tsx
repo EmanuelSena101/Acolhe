@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { ClipboardList, Plus, X, AlertCircle, Search } from "lucide-react";
-import { MapMiniature } from "@/components/map/map-miniature";
+import { MapMiniature } from "@/components/map/map-miniature-lazy";
 import { NovaVisitaModal } from "@/components/nova-visita-modal";
 
 type Periodo = "semana" | "mes" | "tres_meses" | "all";

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { MapView } from "@/components/map/map-view";
+import { MapView } from "@/components/map/map-view-lazy";
 import {
   Home,
   Activity,
@@ -77,7 +77,7 @@ export default function DashboardPage() {
       (f) => (f.properties as { id?: string } | null)?.id === selectedMicroareaId,
     );
     return feat
-      ? (feat.properties as { codigo?: string; equipeNome?: string } | null) ?? null
+      ? ((feat.properties as { codigo?: string; equipeNome?: string } | null) ?? null)
       : null;
   }, [microareasFC, selectedMicroareaId]);
   const { data: ubsFC } = trpc.ubs.listGeoJSON.useQuery(
@@ -102,8 +102,7 @@ export default function DashboardPage() {
     [ubsFC],
   );
   const prefeituraGeoJSON = useMemo(
-    () =>
-      (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
+    () => (prefeituraGeo?.featureCollection as GeoJSON.FeatureCollection | undefined) ?? EMPTY_FC,
     [prefeituraGeo],
   );
 
@@ -297,11 +296,8 @@ export default function DashboardPage() {
             }}
           >
             <span style={{ color: "var(--acolhe-primary)" }}>
-              Mostrando apenas a microarea{" "}
-              <strong>{microareaSelecionada?.codigo ?? ""}</strong>
-              {microareaSelecionada?.equipeNome
-                ? ` — ${microareaSelecionada.equipeNome}`
-                : ""}
+              Mostrando apenas a microarea <strong>{microareaSelecionada?.codigo ?? ""}</strong>
+              {microareaSelecionada?.equipeNome ? ` — ${microareaSelecionada.equipeNome}` : ""}
             </span>
             <button
               onClick={() => setSelectedMicroareaId(null)}
@@ -320,9 +316,7 @@ export default function DashboardPage() {
             ubs={ubsGeoJSON}
             municipio={prefeituraGeoJSON}
             bounds={prefeituraGeo?.bounds ?? null}
-            onMicroareaClick={(id) =>
-              setSelectedMicroareaId((curr) => (curr === id ? null : id))
-            }
+            onMicroareaClick={(id) => setSelectedMicroareaId((curr) => (curr === id ? null : id))}
           />
         </div>
       </Card>
@@ -567,10 +561,7 @@ function Card({ children, padding = false }: { children: React.ReactNode; paddin
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--acolhe-muted-fg)" }}>
-      <span
-        className="inline-block h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
   );
